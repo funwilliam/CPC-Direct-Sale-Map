@@ -1,0 +1,4 @@
+{
+  "_comment": "人工修正表（ADR-003 降級路徑）：爬蟲/openData 語意異常時，在此以站代號覆寫 isDirect。目前為空。",
+  "isDirectOverrides": {}
+}

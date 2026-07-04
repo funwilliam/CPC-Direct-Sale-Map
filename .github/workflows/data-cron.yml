@@ -1,0 +1,34 @@
+name: Data Update
+on:
+  schedule:
+    # 每週一 02:30 台灣時間（UTC 週日 18:30）— 中油牌價週日中午公告、週一生效
+    - cron: '30 18 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # 管線任何驗證失敗（zod / 交叉驗證 / 統計斷言）→ job fail，不 commit（ADR-003）
+      - run: npm run data:build
+      - run: npm run data:price
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data data/snapshots
+          if git diff --cached --quiet; then
+            echo "資料無變更，跳過 commit"
+          else
+            git commit -m "data: 排程更新 $(date -u +%Y-%m-%d)"
+            git push
+          fi

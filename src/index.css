@@ -1,0 +1,68 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+  color: #1f2937;
+  background: #f9fafb;
+}
+
+.shell {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.shell h1 {
+  font-size: 2rem;
+  color: #1a56db;
+  margin-bottom: 0.25rem;
+}
+
+.tagline {
+  color: #6b7280;
+  margin-top: 0;
+}
+
+.stats {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 2rem 0;
+}
+
+.stats div {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  min-width: 140px;
+}
+
+.stats dt {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.stats dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+footer {
+  margin-top: 3rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
