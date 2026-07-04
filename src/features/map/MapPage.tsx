@@ -38,6 +38,8 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
         if (cancelled) return;
         adapter.onViewportChange(({ zoom }) => {
           adapter.setLayerVisibility('franchise', zoom >= FRANCHISE_MIN_ZOOM);
+          // 測試觀測點：目前 zoom（E2E 用，無 UI 影響）
+          if (containerRef.current) containerRef.current.dataset.zoom = String(zoom);
         });
         setReady(true);
       })

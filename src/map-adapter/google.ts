@@ -174,12 +174,12 @@ export class GoogleMapAdapter implements MapAdapter {
 
   fitBounds(b: Bounds, opts?: { maxZoom?: number; padding?: number }): void {
     if (!this.map) return;
+    // 用地圖選項在動畫「期間」夾住 zoom 上限，一步到位；
+    // 事後修正會造成「先放大過頭再縮回」的兩段動作（豎屏窄框時特別明顯）
     if (opts?.maxZoom !== undefined) {
+      this.map.setOptions({ maxZoom: opts.maxZoom });
       google.maps.event.addListenerOnce(this.map, 'idle', () => {
-        const z = this.map?.getZoom();
-        if (z !== undefined && z !== null && opts.maxZoom !== undefined && z > opts.maxZoom) {
-          this.map?.setZoom(opts.maxZoom);
-        }
+        this.map?.setOptions({ maxZoom: undefined }); // 恢復使用者自由縮放
       });
     }
     this.map.fitBounds(
