@@ -3,7 +3,7 @@ import {
   haversineKm,
   planInitialView,
   MAX_RADIUS_KM,
-  ZOOM_FLOOR,
+  FAR_FALLBACK_ZOOM,
   TAIWAN_BOUNDS,
 } from '../../src/lib/geo.ts';
 import { filterByFuels, defaultSort } from '../../src/lib/filter.ts';
@@ -56,15 +56,15 @@ describe('planInitialView (spec/map.md §自動縮放)', () => {
     expect(plan.bounds.west).toBeLessThanOrEqual(user.lng);
   });
 
-  it('30km 外 → far + zoom 下限', () => {
+  it('15km 外 → far + 固定美觀縮放', () => {
     // 台北使用者 vs 高雄站（>300km）
     const far = mkStation({ lat: 22.63, lng: 120.3 });
     const plan = planInitialView(user, [far]);
-    expect(plan).toEqual({ kind: 'far', center: user, zoom: ZOOM_FLOOR });
+    expect(plan).toEqual({ kind: 'far', center: user, zoom: FAR_FALLBACK_ZOOM });
   });
 
-  it('半徑常數為 30km（PRD F1）', () => {
-    expect(MAX_RADIUS_KM).toBe(30);
+  it('半徑常數為 15km ≈ 20 分鐘車程（PRD F1 v1.1）', () => {
+    expect(MAX_RADIUS_KM).toBe(15);
   });
 });
 

@@ -1,6 +1,7 @@
 # T-001 完整歷史油價回填（2003 年起）
 
-狀態: backlog（等外部系統恢復）
+狀態: **done（2026-07-04）**——oil111 恢復，`/oil111/Gasoline/RetailPrice/load`（multipart POST
+start/end 西元日期）回傳 JSON，A 欄=中油。已回填 2003-01-09 起共 966 筆。
 依據: docs/adr/003-data-pipeline.md
 範圍: scripts/backfill-history.ts
 做: 能源署油價系統 https://www2.moeaea.gov.tw/oil111/Gasoline/RetailPrice 提供 2003 年起

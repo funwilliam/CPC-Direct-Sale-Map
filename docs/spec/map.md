@@ -23,18 +23,23 @@ interface MapAdapter {
   `mapId: 'DEMO_MAP_ID'`（正式 Map ID 後續替換）。
 - 加盟 marker：小尺寸、透明度 0.55、灰色系；直營 marker：品牌藍、正常尺寸。
 
-## 自動縮放（src/lib/geo.ts 純函式）
+## 自動縮放與定位（src/lib/geo.ts 純函式）— v1.1 修訂
 
 `planInitialView(user: LatLng | null, directs: Station[]): ViewPlan`
 
 | 情境 | 結果 |
 |---|---|
 | user=null（拒絕/失敗） | `{ kind: 'taiwan' }` → 台灣全島 bounds |
-| 30km 內有直營站 | `{ kind: 'fit', bounds }` = user+最近站外擴 20% padding；fitBounds maxZoom=16 |
-| 30km 內無直營站 | `{ kind: 'far', center: user }` → zoom 10 置中 + 提示「附近 30 公里內無直營站」 |
+| 15km 內有直營站 | `{ kind: 'fit', bounds }` = user+最近站外擴 20% padding；fitBounds maxZoom=16 |
+| 15km 內無直營站 | `{ kind: 'far', center: user }` → 固定 zoom 14（街區層級美觀值）+ 提示 |
 
-- 距離用 haversine。常數：`MAX_RADIUS_KM = 30`、`ZOOM_FLOOR = 10`、`ZOOM_CEIL = 16`。
-- 僅每次 app session 首次定位成功執行一次；之後不再自動移動視角。
+- 常數：`MAX_RADIUS_KM = 15`（≈20 分鐘車程，均速 45km/h）、`FAR_FALLBACK_ZOOM = 14`、`ZOOM_CEIL = 16`。
+- 初次定位自動執行一次；**定位按鈕**（右下 FAB）可隨時重新執行同一規則。
+- 使用者藍點：`.user-dot`（18px 藍芯+白圈+呼吸光暈，樣式見 spec/design.md）。
+
+## 效能（ADR-005）
+
+直營層走 clusterer；加盟層惰性建立 + `idle` 時視窗裁剪（上限 300），拖曳中不得增刪 DOM。
 
 ## 圖層規則
 

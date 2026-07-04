@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GoogleMapAdapter } from '../../map-adapter/google.ts';
 import type { MapAdapter } from '../../map-adapter/types.ts';
-import { planInitialView, ZOOM_FLOOR, type LatLng } from '../../lib/geo.ts';
+import { planInitialView, MAX_RADIUS_KM, type LatLng } from '../../lib/geo.ts';
 import type { Station } from '../../types/station.ts';
 import StationCard from '../station-card/StationCard.tsx';
 
@@ -9,7 +9,7 @@ const FRANCHISE_MIN_ZOOM = 12; // spec/map.md §圖層規則
 
 interface Props {
   stations: Station[];
-  /** 每 session 只自動調整視野一次（App 層持有 flag） */
+  /** 每 session 只自動調整視野一次（App 層持有 flag）；定位鈕可隨時重新觸發 */
   autoFitDone: boolean;
   onAutoFitDone: () => void;
   selected: Station | null;
@@ -22,6 +22,7 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
   const [mapError, setMapError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   // 掛載地圖（一次）
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
     };
   }, []);
 
-  // marker/地圖點擊 → 卡片開關（selected 由 App 層共享，需最新閉包）
+  // marker/地圖點擊 → 卡片開關
   useEffect(() => {
     if (!ready) return;
     const adapter = adapterRef.current;
@@ -66,14 +67,12 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
     if (ready && stations.length > 0) adapterRef.current?.setStations(stations);
   }, [ready, stations]);
 
-  // 初次定位 + 自動縮放（spec/map.md §自動縮放）
-  useEffect(() => {
-    if (!ready || stations.length === 0 || autoFitDone) return;
-    onAutoFitDone();
+  /** 定位並套用視野規劃（初次自動執行；定位鈕重複觸發，spec/map.md §定位） */
+  const locate = useCallback(() => {
+    const adapter = adapterRef.current;
+    if (!adapter || stations.length === 0) return;
 
     const applyPlan = (user: LatLng | null) => {
-      const adapter = adapterRef.current;
-      if (!adapter) return;
       if (user) adapter.setUserLocation(user);
       const plan = planInitialView(user, stations.filter((s) => s.isDirect));
       if (plan.kind === 'taiwan') {
@@ -82,11 +81,13 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
       } else if (plan.kind === 'fit') {
         adapter.fitBounds(plan.bounds, { maxZoom: plan.maxZoom, padding: 48 });
       } else {
-        adapter.panTo(plan.center, ZOOM_FLOOR);
-        setNotice('附近 30 公里內無直營站');
+        adapter.panTo(plan.center, plan.zoom);
+        setNotice(`附近 ${MAX_RADIUS_KM} 公里（約 20 分鐘車程）內無直營站`);
       }
+      setLocating(false);
     };
 
+    setLocating(true);
     if (!navigator.geolocation) {
       applyPlan(null);
       return;
@@ -96,7 +97,14 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
       () => applyPlan(null),
       { enableHighAccuracy: true, timeout: 10_000 }
     );
-  }, [ready, stations, autoFitDone, onAutoFitDone]);
+  }, [stations]);
+
+  // 初次自動定位（每 session 一次）
+  useEffect(() => {
+    if (!ready || stations.length === 0 || autoFitDone) return;
+    onAutoFitDone();
+    locate();
+  }, [ready, stations, autoFitDone, onAutoFitDone, locate]);
 
   // 從清單「在地圖顯示」進來時置中
   useEffect(() => {
@@ -112,6 +120,20 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
         </div>
       ) : (
         <div ref={containerRef} className="map-container" />
+      )}
+      {!mapError && ready && (
+        <button
+          className={`locate-btn ${locating ? 'locating' : ''}`}
+          onClick={locate}
+          aria-label="回到我的位置"
+          title="回到我的位置"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="7" />
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" />
+          </svg>
+        </button>
       )}
       {notice && (
         <div className="map-notice" onClick={() => setNotice(null)}>

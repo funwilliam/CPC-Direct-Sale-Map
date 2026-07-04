@@ -40,7 +40,10 @@ export default function PricePage({ price, history }: Props) {
           </div>
         ))}
       </div>
-      <p className="price-note">歷史走勢圖規劃於 Phase 2 推出（資料每週自動累積中，目前 {history?.entries.length ?? 0} 筆）。</p>
+      <p className="price-note">
+        歷史走勢圖規劃於 Phase 2 推出（已收錄 2003 年起 {history?.entries.length ?? 0} 筆調價紀錄，每週自動更新）。
+      </p>
+      <p className="attribution">資料來源：台灣中油／經濟部能源署／政府資料開放平臺（非官方應用）</p>
     </div>
   );
 }

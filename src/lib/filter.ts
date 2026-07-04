@@ -8,6 +8,15 @@ export function filterByFuels(stations: Station[], fuels: ReadonlySet<FuelKey>):
   return stations.filter((s) => [...fuels].every((f) => s.fuels[f]));
 }
 
+/** 依直線距離排序（車程排序的前置粗篩，見 spec/list-search.md §排序） */
+export function sortByDistance<T extends { lat: number; lng: number }>(
+  stations: T[],
+  user: { lat: number; lng: number },
+  distanceFn: (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => number
+): T[] {
+  return [...stations].sort((a, b) => distanceFn(user, a) - distanceFn(user, b));
+}
+
 /** 預設排序：直營在前，同組依縣市、站名 */
 export function defaultSort(stations: Station[]): Station[] {
   return [...stations].sort((a, b) => {

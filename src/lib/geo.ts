@@ -12,9 +12,9 @@ export interface Bounds {
   west: number;
 }
 
-// spec/map.md §自動縮放
-export const MAX_RADIUS_KM = 30;
-export const ZOOM_FLOOR = 10;
+// spec/map.md §自動縮放：20 分鐘車程（一般道路均速 ~45km/h）≈ 15km
+export const MAX_RADIUS_KM = 15;
+export const FAR_FALLBACK_ZOOM = 14; // 超出範圍時的固定美觀縮放（街區層級）
 export const ZOOM_CEIL = 16;
 
 export const TAIWAN_BOUNDS: Bounds = { north: 26.5, south: 21.7, east: 122.1, west: 118.1 };
@@ -54,7 +54,7 @@ export function planInitialView(user: LatLng | null, directs: Station[]): ViewPl
 
   const nearest = nearestStation(user, directs);
   if (!nearest || nearest.km > MAX_RADIUS_KM) {
-    return { kind: 'far', center: user, zoom: ZOOM_FLOOR };
+    return { kind: 'far', center: user, zoom: FAR_FALLBACK_ZOOM };
   }
 
   const { station } = nearest;

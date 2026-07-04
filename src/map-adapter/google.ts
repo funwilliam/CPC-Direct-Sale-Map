@@ -6,12 +6,18 @@ import type { Station } from '../types/station.ts';
 
 let optionsSet = false;
 
+/** 視窗內同時渲染的加盟 marker 上限（ADR-005 效能預算） */
+const FRANCHISE_RENDER_CAP = 300;
+
 export class GoogleMapAdapter implements MapAdapter {
   private map: google.maps.Map | null = null;
   private clusterer: MarkerClusterer | null = null;
-  private franchiseMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
-  private userMarker: google.maps.marker.AdvancedMarkerElement | null = null;
   private markerLib: google.maps.MarkerLibrary | null = null;
+  private franchiseStations: Station[] = [];
+  /** 加盟 marker 惰性建立池（只為進過視窗的站建 DOM） */
+  private franchisePool = new Map<string, google.maps.marker.AdvancedMarkerElement>();
+  private visibleFranchise = new Set<string>();
+  private userMarker: google.maps.marker.AdvancedMarkerElement | null = null;
   private markerClickCb: ((id: string) => void) | null = null;
   private mapClickCb: (() => void) | null = null;
   private viewportCb: ((v: { zoom: number }) => void) | null = null;
@@ -34,20 +40,24 @@ export class GoogleMapAdapter implements MapAdapter {
       zoom: opts.zoom,
       mapId: 'DEMO_MAP_ID',
       disableDefaultUI: true,
-      zoomControl: true,
+      zoomControl: false,
       clickableIcons: false,
+      gestureHandling: 'greedy',
     });
     this.map.addListener('zoom_changed', () => {
       const zoom = this.map?.getZoom();
       if (zoom !== undefined && zoom !== null) this.viewportCb?.({ zoom });
     });
+    // 視窗裁剪：地圖靜止時才增減加盟 marker（拖曳中不動 DOM，保持流暢）
+    this.map.addListener('idle', () => this.cullFranchise());
     this.map.addListener('click', () => this.mapClickCb?.());
   }
 
   unmount(): void {
     this.clusterer?.clearMarkers();
     this.clusterer = null;
-    this.franchiseMarkers = [];
+    this.franchisePool.clear();
+    this.visibleFranchise.clear();
     this.userMarker = null;
     this.map = null;
   }
@@ -57,30 +67,84 @@ export class GoogleMapAdapter implements MapAdapter {
     const { AdvancedMarkerElement, PinElement } = this.markerLib;
 
     this.clusterer?.clearMarkers();
-    for (const m of this.franchiseMarkers) m.map = null;
-    this.franchiseMarkers = [];
+    for (const m of this.franchisePool.values()) m.map = null;
+    this.franchisePool.clear();
+    this.visibleFranchise.clear();
 
+    // 直營層：全部交給 clusterer（GPU 端聚合，DOM 數量 = 叢集數）
     const directMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
     for (const s of stations) {
-      const pin = new PinElement(
-        s.isDirect
-          ? { background: '#1a56db', borderColor: '#153e9e', glyphColor: '#ffffff' }
-          : { background: '#9ca3af', borderColor: '#6b7280', glyphColor: '#e5e7eb', scale: 0.62 }
-      );
-      if (!s.isDirect) pin.element.style.opacity = '0.55';
+      if (!s.isDirect) continue;
+      const pin = new PinElement({
+        background: '#1a56db',
+        borderColor: '#153e9e',
+        glyphColor: '#ffffff',
+      });
       const marker = new AdvancedMarkerElement({
         position: { lat: s.lat, lng: s.lng },
         content: pin.element,
         title: s.name,
       });
       marker.addListener('click', () => this.markerClickCb?.(s.id));
-      if (s.isDirect) directMarkers.push(marker);
-      else {
-        marker.map = this.franchiseVisible ? this.map : null;
-        this.franchiseMarkers.push(marker);
-      }
+      directMarkers.push(marker);
     }
     this.clusterer = new MarkerClusterer({ map: this.map, markers: directMarkers });
+
+    // 加盟層：只存資料，marker 進視窗才惰性建立（cullFranchise）
+    this.franchiseStations = stations.filter((s) => !s.isDirect);
+    this.cullFranchise();
+  }
+
+  /** 只渲染視窗（含 buffer）內的加盟 marker，上限 FRANCHISE_RENDER_CAP */
+  private cullFranchise(): void {
+    if (!this.map || !this.markerLib) return;
+    const bounds = this.map.getBounds();
+    if (!bounds) return;
+
+    const wanted = new Set<string>();
+    if (this.franchiseVisible) {
+      let count = 0;
+      for (const s of this.franchiseStations) {
+        if (count >= FRANCHISE_RENDER_CAP) break;
+        if (bounds.contains({ lat: s.lat, lng: s.lng })) {
+          wanted.add(s.id);
+          count++;
+        }
+      }
+    }
+
+    for (const id of this.visibleFranchise) {
+      if (!wanted.has(id)) {
+        const m = this.franchisePool.get(id);
+        if (m) m.map = null;
+        this.visibleFranchise.delete(id);
+      }
+    }
+    for (const id of wanted) {
+      if (this.visibleFranchise.has(id)) continue;
+      let marker = this.franchisePool.get(id);
+      if (!marker) {
+        const s = this.franchiseStations.find((x) => x.id === id);
+        if (!s) continue;
+        const { AdvancedMarkerElement, PinElement } = this.markerLib;
+        const pin = new PinElement({
+          background: '#9ca3af',
+          borderColor: '#6b7280',
+          glyphColor: '#e5e7eb',
+          scale: 0.62,
+        });
+        pin.element.style.opacity = '0.55';
+        marker = new AdvancedMarkerElement({
+          position: { lat: s.lat, lng: s.lng },
+          content: pin.element,
+          title: s.name,
+        });
+        marker.addListener('click', () => this.markerClickCb?.(id));
+        this.franchisePool.set(id, marker);
+      }
+      marker.map = this.map;
+      this.visibleFranchise.add(id);
+    }
   }
 
   setUserLocation(pos: LatLng | null): void {
@@ -91,9 +155,9 @@ export class GoogleMapAdapter implements MapAdapter {
       return;
     }
     if (!this.userMarker) {
+      // 原生 Google Maps 風格藍點：白圈藍芯 + 呼吸光暈（樣式在 index.css .user-dot）
       const dot = document.createElement('div');
-      dot.style.cssText =
-        'width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px rgba(37,99,235,.4)';
+      dot.className = 'user-dot';
       this.userMarker = new this.markerLib.AdvancedMarkerElement({
         content: dot,
         zIndex: 999,
@@ -111,7 +175,6 @@ export class GoogleMapAdapter implements MapAdapter {
   fitBounds(b: Bounds, opts?: { maxZoom?: number; padding?: number }): void {
     if (!this.map) return;
     if (opts?.maxZoom !== undefined) {
-      // fitBounds 完成後夾住 zoom 上限
       google.maps.event.addListenerOnce(this.map, 'idle', () => {
         const z = this.map?.getZoom();
         if (z !== undefined && z !== null && opts.maxZoom !== undefined && z > opts.maxZoom) {
@@ -138,7 +201,8 @@ export class GoogleMapAdapter implements MapAdapter {
   }
 
   setLayerVisibility(_layer: 'franchise', visible: boolean): void {
+    if (this.franchiseVisible === visible) return;
     this.franchiseVisible = visible;
-    for (const m of this.franchiseMarkers) m.map = visible ? this.map : null;
+    this.cullFranchise();
   }
 }
