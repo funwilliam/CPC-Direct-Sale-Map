@@ -17,7 +17,12 @@ export default defineConfig({
         theme_color: '#1a56db',
         background_color: '#ffffff',
         display: 'standalone',
-        // icons 於 Phase 1 補齊（含 192/512 maskable）
+        start_url: '/CPC-Direct-Sale-Map/',
+        icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
       workbox: {
         // data JSON 採 stale-while-revalidate（ARCHITECTURE §PWA 策略）
