@@ -18,7 +18,9 @@
 
 ## 元件規範
 
-- **Header**：白底 52px、左側品牌方標（圓角 10px 藍底白 icon）+ 站名粗體。不用大色塊橫幅。
+- **無 header，邊到邊**（v1.2，產品擁有者要求）：地圖延伸到 iOS 狀態列下
+  （black-translucent + viewport-fit=cover），頂部 14px+inset 深色漸層 scrim 保持時間可讀；
+  非地圖分頁以品牌色 `status-strip`（高度 = safe-area-inset-top）填充。品牌識別由 PWA icon 承擔。
 - **Tab bar**：icon（24px stroke 1.8 圓角端點）+ 標籤（0.7rem）；作用中 = 品牌色 + `--brand-tint` 圓角底；含 iOS safe-area padding。
 - **FAB（定位鈕）**：48px 圓、白底、`--shadow-2`、右下角；按壓 scale(.92)。
 - **使用者藍點**：18px 藍芯（#1a73e8）+ 3px 白圈 + 投影 + 呼吸光暈動畫（2.4s）。

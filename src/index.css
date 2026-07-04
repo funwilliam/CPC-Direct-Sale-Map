@@ -52,15 +52,10 @@ button {
   flex-direction: column;
 }
 
-/* ---- Header ---- */
-.app-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 52px;
-  padding: 0 1rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+/* ---- 全螢幕邊到邊（v1.2：移除 header，地圖延伸到狀態列下） ---- */
+.status-strip {
+  height: env(safe-area-inset-top);
+  background: var(--brand);
   flex: none;
 }
 
@@ -72,13 +67,6 @@ button {
   border-radius: 10px;
   background: var(--brand);
   color: #fff;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 .app-main {
@@ -152,6 +140,19 @@ button {
   display: flex;
 }
 
+/* 狀態列 scrim：地圖延伸到時間區塊下時保持狀態列文字可讀 */
+.map-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(env(safe-area-inset-top) + 14px);
+  background: linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0));
+  z-index: 2;
+  pointer-events: none;
+}
+
 .map-container {
   flex: 1;
 }
@@ -165,7 +166,7 @@ button {
 
 .map-notice {
   position: absolute;
-  top: 0.75rem;
+  top: calc(0.75rem + env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   background: rgba(27, 31, 39, 0.88);

@@ -58,15 +58,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <span className="logo-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 21s-7-5.1-7-11a7 7 0 1 1 14 0c0 5.9-7 11-7 11Z" />
-            <circle cx="12" cy="10" r="2.5" />
-          </svg>
-        </span>
-        <h1>順路油站</h1>
-      </header>
+      {/* 非地圖分頁：狀態列區域以品牌色填充（瀏覽器內高度為 0 不可見）；
+          地圖分頁：地圖延伸到狀態列下，頂部漸層 scrim 保持時間可讀（原生地圖慣例） */}
+      {tab !== 'map' && <div className="status-strip" aria-hidden="true" />}
       {dataError && <p className="error page-pad">站點資料載入失敗：{dataError}</p>}
       <main className="app-main">
         {/* 地圖分頁用 display 切換保留實例，避免重複載入 Maps JS */}
