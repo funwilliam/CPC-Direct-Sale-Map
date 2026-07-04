@@ -1,19 +1,19 @@
 import type { CurrentPriceFile, PriceHistoryFile } from '../../types/station.ts';
 import { FUEL_LABELS } from '../../types/station.ts';
+import PriceChart from './PriceChart.tsx';
 
 interface Props {
   price: CurrentPriceFile | null;
   history: PriceHistoryFile | null;
 }
 
-/** 油價頁 Phase 1 版：當前牌價卡片。走勢圖為 Phase 2（PRD F6）。 */
+/** 油價頁（spec/price.md）：牌價卡 → 走勢圖 → 調價表 → 來源 */
 export default function PricePage({ price, history }: Props) {
   if (!price) return <p className="page-pad">油價資料載入中…</p>;
 
   const { current } = price;
-  const prev = history && history.entries.length >= 2
-    ? history.entries[history.entries.length - 2]
-    : null;
+  const entries = history?.entries ?? [];
+  const prev = entries.length >= 2 ? entries[entries.length - 2] : null;
 
   const items = (['g92', 'g95', 'g98', 'diesel'] as const).map((k) => ({
     key: k,
@@ -21,6 +21,9 @@ export default function PricePage({ price, history }: Props) {
     value: current[k],
     delta: prev ? +(current[k] - prev[k]).toFixed(1) : null,
   }));
+
+  // 近期調價表（最近 10 次，新到舊）——兼作走勢圖的表格視圖
+  const recent = [...entries].slice(-10).reverse();
 
   return (
     <div className="price-page page-pad">
@@ -40,9 +43,37 @@ export default function PricePage({ price, history }: Props) {
           </div>
         ))}
       </div>
-      <p className="price-note">
-        歷史走勢圖規劃於 Phase 2 推出（已收錄 2003 年起 {history?.entries.length ?? 0} 筆調價紀錄，每週自動更新）。
-      </p>
+
+      {entries.length >= 2 && <PriceChart entries={entries} />}
+
+      {recent.length > 0 && (
+        <div className="recent-table-wrap">
+          <h3>近期調價</h3>
+          <table className="recent-table">
+            <thead>
+              <tr>
+                <th>生效日</th>
+                <th>92</th>
+                <th>95</th>
+                <th>98</th>
+                <th>柴油</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((e) => (
+                <tr key={e.date}>
+                  <td>{e.date}</td>
+                  <td>{e.g92.toFixed(1)}</td>
+                  <td>{e.g95.toFixed(1)}</td>
+                  <td>{e.g98.toFixed(1)}</td>
+                  <td>{e.diesel.toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <p className="attribution">資料來源：台灣中油／經濟部能源署／政府資料開放平臺（非官方應用）</p>
     </div>
   );

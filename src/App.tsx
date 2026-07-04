@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import MapPage from './features/map/MapPage.tsx';
+import InstallPrompt from './features/install/InstallPrompt.tsx';
 import ListPage from './features/list/ListPage.tsx';
 import PricePage from './features/price/PricePage.tsx';
 import type { LatLng } from './lib/geo.ts';
@@ -83,6 +84,7 @@ export default function App() {
         )}
         {tab === 'price' && <PricePage price={price} history={history} />}
       </main>
+      <InstallPrompt />
       <nav className="tab-bar" aria-label="主要導覽">
         {(
           [
