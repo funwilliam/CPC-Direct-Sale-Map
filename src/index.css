@@ -67,6 +67,7 @@ button {
 
 .app {
   /* 定高供 flex 子項（tab bar 貼底）；html 的 min-height 修法負責消除底部白 bar */
+  position: relative;
   height: 100vh;
   height: 100dvh;
   display: flex;
@@ -946,6 +947,65 @@ button {
 
 .strip-settings {
   background: var(--bg); /* 延續設定頁底色 */
+}
+
+/* ---- 桌面版（≥768px）：手機版直接放大會撐爆排版 ---- */
+@media (min-width: 768px) {
+  /* tab bar 改置中懸浮膠囊 dock（地圖全幅在後） */
+  .tab-bar {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    width: auto;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: var(--shadow-2);
+    padding: 5px 8px;
+    gap: 4px;
+    z-index: 15;
+  }
+
+  .tab-bar button {
+    flex: none;
+    min-width: 92px;
+    min-height: 50px;
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem 0.3rem;
+  }
+
+  /* 搜尋覆層收斂為左側欄（Google Maps 桌面慣例） */
+  .search-overlay {
+    align-items: flex-start;
+  }
+
+  .search-sheet {
+    width: 420px;
+    max-height: calc(100% - 24px);
+    border-radius: 0 0 var(--radius-l) 0;
+  }
+
+  /* 內容頁限寬置中，並為懸浮 dock 留出底部空間 */
+  .price-page,
+  .settings-page {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding-bottom: 110px;
+  }
+
+  .station-card {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    width: 400px;
+    margin: 0;
+  }
+
+  .locate-btn {
+    right: 24px;
+    bottom: 96px;
+  }
 }
 
 /* 無障礙：使用者要求減少動態時停用裝飾性動畫 */
