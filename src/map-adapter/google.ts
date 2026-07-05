@@ -23,6 +23,8 @@ export class GoogleMapAdapter implements MapAdapter {
   private viewportCb: ((v: { zoom: number }) => void) | null = null;
   private franchiseVisible = true;
   private animId = 0;
+  private lastHit = '';
+  private lastZoomQ = -1;
 
   async mount(el: HTMLElement, opts: { center: LatLng; zoom: number }): Promise<void> {
     const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
@@ -44,14 +46,19 @@ export class GoogleMapAdapter implements MapAdapter {
       zoomControl: false,
       clickableIcons: false,
       gestureHandling: 'greedy',
+      isFractionalZoomEnabled: true, // 向量地圖分數縮放：相機動畫走 GPU、不逐級跳磚
     });
     this.updateHitSize(opts.zoom);
     this.map.addListener('zoom_changed', () => {
       const zoom = this.map?.getZoom();
-      if (zoom !== undefined && zoom !== null) {
-        this.updateHitSize(zoom);
-        this.viewportCb?.({ zoom });
-      }
+      if (zoom === undefined || zoom === null) return;
+      // 量化到 1/4 級再往外傳：動畫每幀觸發 zoom_changed，
+      // 未量化會造成每幀 CSS/DOM 副作用（先前卡頓的主因）
+      const q = Math.round(zoom * 4);
+      if (q === this.lastZoomQ) return;
+      this.lastZoomQ = q;
+      this.updateHitSize(zoom);
+      this.viewportCb?.({ zoom });
     });
     // 視窗裁剪：地圖靜止時才增減加盟 marker（拖曳中不動 DOM，保持流暢）
     this.map.addListener('idle', () => this.cullFranchise());
@@ -60,7 +67,10 @@ export class GoogleMapAdapter implements MapAdapter {
 
   /** marker 命中區大小隨縮放調整（低縮放密集→維持 44 下限；高縮放拉開→放大更好按） */
   private updateHitSize(zoom: number): void {
-    document.documentElement.style.setProperty('--hit', zoom >= 16 ? '56px' : '44px');
+    const v = zoom >= 16 ? '56px' : '44px';
+    if (v === this.lastHit) return; // 值沒變不碰 DOM（避免動畫期間每幀重算樣式）
+    this.lastHit = v;
+    document.documentElement.style.setProperty('--hit', v);
   }
 
   /** 以 pin 尖端為錨點，外包一層透明命中區（達 Apple HIG 44pt 可觸控下限） */
@@ -71,8 +81,46 @@ export class GoogleMapAdapter implements MapAdapter {
     return mk;
   }
 
-  /** 平滑相機動畫：逐幀插值中心與縮放（Google Maps JS 無內建 flyTo），保住方向感 */
-  private animateCamera(center: LatLng, zoom: number, durationMs = 600): void {
+  /** 單段補間（promise 在結束或被新動畫取代時 resolve） */
+  private tween(
+    from: { lat: number; lng: number; zoom: number },
+    to: { lat: number; lng: number; zoom: number },
+    durationMs: number,
+    ease: (t: number) => number
+  ): Promise<boolean> {
+    const map = this.map;
+    if (!map) return Promise.resolve(false);
+    const id = this.animId;
+    const start = performance.now();
+    return new Promise((resolve) => {
+      const frame = (now: number) => {
+        if (id !== this.animId || this.map !== map) return resolve(false); // 被取代/卸載
+        const t = Math.min(1, (now - start) / durationMs);
+        const k = ease(t);
+        map.moveCamera({
+          center: { lat: from.lat + (to.lat - from.lat) * k, lng: from.lng + (to.lng - from.lng) * k },
+          zoom: from.zoom + (to.zoom - from.zoom) * k,
+        });
+        if (t < 1) requestAnimationFrame(frame);
+        else resolve(true);
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+
+  /** 視窗寬對應的經度跨度（度），用於估算「一個視窗」的距離尺度 */
+  private viewportLngSpan(zoom: number): number {
+    const div = this.map?.getDiv() as HTMLElement | undefined;
+    return Math.max(1, div?.offsetWidth ?? 400) * (360 / (256 * 2 ** zoom));
+  }
+
+  /**
+   * 相機移動策略（UX：移動方向感一致）
+   * - 極短：直接到位。
+   * - 短距離（≤1.5 視窗）：全程平滑補間。
+   * - 長距離：三段式——朝目標方向小平移（建立方向感）→ 瞬移到目標前緣 → 小平移滑入。
+   */
+  private async animateCamera(center: LatLng, zoom: number, durationMs = 500): Promise<void> {
     const map = this.map;
     if (!map) return;
     const c0 = map.getCenter();
@@ -84,20 +132,43 @@ export class GoogleMapAdapter implements MapAdapter {
     const sLat = c0.lat();
     const sLng = c0.lng();
     const id = ++this.animId;
-    const start = performance.now();
-    // easeInOutCubic
-    const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-    const frame = (now: number) => {
-      if (id !== this.animId || this.map !== map) return; // 被新動畫取代或已卸載
-      const t = Math.min(1, (now - start) / durationMs);
-      const k = ease(t);
-      map.moveCamera({
-        center: { lat: sLat + (center.lat - sLat) * k, lng: sLng + (center.lng - sLng) * k },
-        zoom: z0 + (zoom - z0) * k,
-      });
-      if (t < 1) requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
+
+    // 位移與縮放差都極小 → 不值得動畫
+    if (Math.abs(zoom - z0) < 0.05 && Math.abs(center.lat - sLat) < 1e-4 && Math.abs(center.lng - sLng) < 1e-4) {
+      map.moveCamera({ center, zoom });
+      return;
+    }
+
+    const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const dLat = center.lat - sLat;
+    const dLng = center.lng - sLng;
+    const dist = Math.hypot(dLat, dLng);
+    const spans = dist / this.viewportLngSpan(Math.min(z0, zoom));
+
+    if (spans <= 1.5 && Math.abs(zoom - z0) <= 3) {
+      await this.tween({ lat: sLat, lng: sLng, zoom: z0 }, { ...center, zoom }, durationMs, easeInOut);
+      return;
+    }
+
+    // 三段式長距離
+    const ux = dLat / (dist || 1);
+    const uy = dLng / (dist || 1);
+    const stepOut = 0.35 * this.viewportLngSpan(z0); // 出發端：朝目標小平移 0.35 視窗
+    const stepIn = 0.35 * this.viewportLngSpan(zoom); // 到達端：由前緣滑入 0.35 視窗
+    const easeIn = (t: number) => t * t;
+    const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
+
+    const ok = await this.tween(
+      { lat: sLat, lng: sLng, zoom: z0 },
+      { lat: sLat + ux * stepOut, lng: sLng + uy * stepOut, zoom: z0 },
+      160,
+      easeIn
+    );
+    if (!ok || id !== this.animId || this.map !== map) return;
+    const preLat = center.lat - ux * stepIn;
+    const preLng = center.lng - uy * stepIn;
+    map.moveCamera({ center: { lat: preLat, lng: preLng }, zoom }); // 中段瞬移
+    await this.tween({ lat: preLat, lng: preLng, zoom }, { ...center, zoom }, 280, easeOut);
   }
 
   /** bounds + padding → 相機中心與縮放（標準 mercator fit 公式，供平滑動畫用） */

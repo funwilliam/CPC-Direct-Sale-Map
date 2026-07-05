@@ -5,11 +5,13 @@ import { planInitialView, MAX_RADIUS_KM, type LatLng } from '../../lib/geo.ts';
 import { bumpMapLoad } from '../../lib/usage.ts';
 import type { Station } from '../../types/station.ts';
 import StationCard from '../station-card/StationCard.tsx';
+import SearchOverlay from '../search/SearchOverlay.tsx';
 
 const FRANCHISE_MIN_ZOOM = 12; // spec/map.md §圖層規則
 
 interface Props {
   stations: Station[];
+  userLocation: LatLng | null;
   /** 每 session 只自動調整視野一次（App 層持有 flag）；定位鈕可隨時重新觸發 */
   autoFitDone: boolean;
   onAutoFitDone: () => void;
@@ -17,7 +19,14 @@ interface Props {
   onSelect: (s: Station | null) => void;
 }
 
-export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected, onSelect }: Props) {
+export default function MapPage({
+  stations,
+  userLocation,
+  autoFitDone,
+  onAutoFitDone,
+  selected,
+  onSelect,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const adapterRef = useRef<MapAdapter | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -124,6 +133,9 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
         </div>
       ) : (
         <div ref={containerRef} className="map-container" />
+      )}
+      {!mapError && ready && (
+        <SearchOverlay stations={stations} userLocation={userLocation} onPick={(s) => onSelect(s)} />
       )}
       {!mapError && ready && (
         <button

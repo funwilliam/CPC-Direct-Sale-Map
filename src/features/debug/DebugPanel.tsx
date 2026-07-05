@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react';
 import { readMapLoad, FREE_TIER_MONTHLY } from '../../lib/usage.ts';
 
+/** epoch → 瀏覽器當地時區 YYYY-MM-DD HH:mm (UTC±N) */
+function fmtLocal(ts: number): string {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const oh = Math.floor(Math.abs(off) / 60);
+  const om = Math.abs(off) % 60;
+  const tz = `UTC${sign}${oh}${om ? ':' + p(om) : ''}`;
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())} (${tz})`;
+}
+
 /** 診斷面板（連點同一 tab 7 下啟用）：回報實機尺寸與本機 Maps 載入估算 */
 export default function DebugPanel() {
   const [lines, setLines] = useState<string[]>([]);
@@ -23,7 +35,7 @@ export default function DebugPanel() {
         (navigator as { standalone?: boolean }).standalone === true;
       const usage = readMapLoad();
       setLines([
-        `BUILD ${__BUILD_ID__}`,
+        `BUILD ${fmtLocal(__BUILD_TS__)}`,
         `standalone=${standalone}`,
         `Maps載入(本機 ${usage.month}): ${usage.count} / 免費 ${FREE_TIER_MONTHLY}`,
         `  ↑本裝置估算，非帳號總量（帳號級需後端查 Cloud Monitoring）`,

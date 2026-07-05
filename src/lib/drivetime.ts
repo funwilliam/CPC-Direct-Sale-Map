@@ -5,7 +5,9 @@ import { importLibrary } from '@googlemaps/js-api-loader';
 import type { LatLng } from './geo.ts';
 import type { Station } from '../types/station.ts';
 
-export const DRIVE_TIME_BATCH = 25; // Distance Matrix 單請求上限
+export const DRIVE_TIME_BATCH = 25; // Distance Matrix 單請求上限（API 硬限制）
+export const DRIVE_PREFILTER_KM = 10; // 只對 10km 內的站查車程（省 API，v1.2 由 30 縮小）
+export const DRIVE_QUERY_LIMIT = 10; // 單次最多查 10 站（省 API，v1.2 由 25 縮小）
 
 /** 使用者位置量化到 ~300m 格網作快取鍵（微小移動不重打 API） */
 export function locationCacheKey(user: LatLng): string {

@@ -227,6 +227,102 @@ button {
   box-shadow: var(--shadow-2);
 }
 
+/* ---- 地圖搜尋（Google Maps 慣例：左上 icon 展開為搜尋覆層） ---- */
+.search-fab {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 0.9rem);
+  left: 0.9rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  z-index: 5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.search-fab:active {
+  transform: scale(0.92);
+}
+
+.search-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(27, 31, 39, 0.28); /* 覆層下地圖微暗，聚焦搜尋 */
+  display: flex;
+  flex-direction: column;
+}
+
+.search-sheet {
+  background: var(--surface);
+  padding-top: env(safe-area-inset-top);
+  border-radius: 0 0 var(--radius-l) var(--radius-l);
+  box-shadow: var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  max-height: 72%;
+  animation: card-in var(--dur) var(--ease);
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0.75rem 0.2rem;
+}
+
+.search-bar input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  font-size: 0.95rem;
+  background: var(--bg);
+  outline-color: var(--brand);
+}
+
+.search-back,
+.search-clear {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 1.3rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.search-sheet .fuel-filters {
+  padding: 0.45rem 0.9rem 0.55rem;
+  margin-top: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.search-results {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.search-empty {
+  padding: 1.2rem;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 0.85rem;
+  list-style: none;
+}
+
 /* 定位 FAB（原生地圖慣例：右下角圓鈕） */
 .locate-btn {
   position: absolute;

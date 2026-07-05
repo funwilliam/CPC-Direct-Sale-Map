@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import MapPage from './features/map/MapPage.tsx';
 import InstallPrompt from './features/install/InstallPrompt.tsx';
-import ListPage from './features/list/ListPage.tsx';
 import PricePage from './features/price/PricePage.tsx';
 import DebugPanel from './features/debug/DebugPanel.tsx';
 import type { LatLng } from './lib/geo.ts';
 import type { CurrentPriceFile, PriceHistoryFile, Station, StationsFile } from './types/station.ts';
 
-type Tab = 'map' | 'list' | 'price';
+type Tab = 'map' | 'price';
 
 const initialDebug =
   typeof location !== 'undefined' &&
@@ -16,7 +15,6 @@ const initialDebug =
 const TAB_ICONS: Record<Tab, string> = {
   // 24x24 stroke path（設計規範見 docs/spec/design.md §圖標）
   map: 'M12 21s-7-5.1-7-11a7 7 0 1 1 14 0c0 5.9-7 11-7 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
-  list: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
   price: 'M12 1v22M17 5.5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
 };
 
@@ -76,11 +74,6 @@ export default function App() {
     );
   }, []);
 
-  const showOnMap = useCallback((s: Station) => {
-    setSelected(s);
-    setTab('map');
-  }, []);
-
   const onAutoFitDone = useCallback(() => setAutoFitDone(true), []);
 
   return (
@@ -95,15 +88,13 @@ export default function App() {
         <div style={{ display: tab === 'map' ? 'contents' : 'none' }}>
           <MapPage
             stations={stations}
+            userLocation={userLocation}
             autoFitDone={autoFitDone}
             onAutoFitDone={onAutoFitDone}
             selected={tab === 'map' ? selected : null}
             onSelect={setSelected}
           />
         </div>
-        {tab === 'list' && (
-          <ListPage stations={stations} userLocation={userLocation} onShowOnMap={showOnMap} />
-        )}
         {tab === 'price' && <PricePage price={price} history={history} />}
       </main>
       <InstallPrompt />
@@ -111,7 +102,6 @@ export default function App() {
         {(
           [
             ['map', '地圖'],
-            ['list', '清單'],
             ['price', '油價'],
           ] as [Tab, string][]
         ).map(([key, label]) => (

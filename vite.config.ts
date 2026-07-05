@@ -6,8 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   base: '/CPC-Direct-Sale-Map/',
   define: {
-    // build 識別碼：顯示於油價頁頁尾，用於確認裝置上實際運行的版本
-    __BUILD_ID__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
+    // build 時間（epoch ms）：診斷面板以「瀏覽器當地時區」格式化顯示
+    __BUILD_TS__: Date.now(),
   },
   plugins: [
     react(),
