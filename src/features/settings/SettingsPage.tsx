@@ -5,7 +5,7 @@ import { fmtLocal } from '../../lib/format.ts';
 
 type Engine = 'raster' | 'vector';
 
-const APP_URL = 'https://funwilliam.github.io/CPC-Direct-Sale-Map/';
+const APP_URL = 'https://funwilliam.github.io/CPC-Direct-Sale-Map';
 const CONTACT_EMAIL = '44458534+funwilliam@users.noreply.github.com';
 
 function getEngine(): Engine {
@@ -142,7 +142,6 @@ export default function SettingsPage() {
           <CopyBtn value={APP_URL} label="複製網址" />
         </div>
         <p className="set-hint set-url">{APP_URL}</p>
-        <p className="set-hint">資料來源：台灣中油／經濟部能源署／政府資料開放平臺</p>
       </section>
 
       <section className="set-group">
