@@ -8,12 +8,18 @@ on:
 permissions:
   contents: write
 
+# 避免排程與手動觸發重疊執行（皆會 commit 資料）
+concurrency:
+  group: data-cron
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
