@@ -1,4 +1,4 @@
-# ARCHITECTURE — 順路油站（L1）
+# ARCHITECTURE — 順路加油（L1）
 
 > 上限 100 行｜僅隨 ADR 更新｜細節契約見 docs/spec/
 

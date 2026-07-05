@@ -33,6 +33,24 @@ export default function MapPage({
   const [notice, setNotice] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [locating, setLocating] = useState(false);
+  // 啟動幕：蓋住「未定位的全台地圖」直到首次視野套用完成（UX：第一眼即自己的位置）
+  const [boot, setBoot] = useState<'show' | 'hide' | 'gone'>('show');
+
+  const dismissSplash = useCallback(() => {
+    setBoot((b) => (b === 'show' ? 'hide' : b));
+    setTimeout(() => setBoot('gone'), 350); // 等淡出動畫
+  }, []);
+
+  // 啟動幕硬上限：定位過慢也不無限等（6 秒後直接進場，定位稍後到再平移過去）
+  useEffect(() => {
+    const t = setTimeout(dismissSplash, 6000);
+    return () => clearTimeout(t);
+  }, [dismissSplash]);
+
+  // 地圖載入失敗 → 立即撤啟動幕顯示錯誤卡
+  useEffect(() => {
+    if (mapError) dismissSplash();
+  }, [mapError, dismissSplash]);
 
   // 掛載地圖（一次）
   useEffect(() => {
@@ -98,6 +116,8 @@ export default function MapPage({
         setNotice(`附近 ${MAX_RADIUS_KM} 公里（約 20 分鐘車程）內無直營站`);
       }
       setLocating(false);
+      // 首次視野就位後撤啟動幕（多留 0.45s 讓相機安定，揭幕即最終畫面）
+      setTimeout(dismissSplash, 450);
     };
 
     setLocating(true);
@@ -110,7 +130,7 @@ export default function MapPage({
       () => applyPlan(null),
       { enableHighAccuracy: true, timeout: 10_000 }
     );
-  }, [stations]);
+  }, [stations, dismissSplash]);
 
   // 初次自動定位（每 session 一次）
   useEffect(() => {
@@ -159,6 +179,19 @@ export default function MapPage({
         </div>
       )}
       {selected && <StationCard station={selected} onClose={() => onSelect(null)} />}
+      {boot !== 'gone' && !mapError && (
+        <div className={`map-splash${boot === 'hide' ? ' splash-hide' : ''}`} aria-hidden="true">
+          <span className="logo-mark splash-logo">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21s-7-5.1-7-11a7 7 0 1 1 14 0c0 5.9-7 11-7 11Z" />
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+          </span>
+          <div className="splash-name">順路加油</div>
+          <div className="splash-spinner" />
+          <div className="splash-status">定位中…</div>
+        </div>
+      )}
     </div>
   );
 }

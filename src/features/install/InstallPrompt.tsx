@@ -74,7 +74,7 @@ export default function InstallPrompt() {
       <div className="install-text">
         {mode === 'native' ? (
           <>
-            <b>安裝「順路油站」</b>
+            <b>安裝「順路加油」</b>
             <span>加到主畫面，像 App 一樣使用</span>
           </>
         ) : (

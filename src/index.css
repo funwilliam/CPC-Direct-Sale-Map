@@ -227,6 +227,54 @@ button {
   box-shadow: var(--shadow-2);
 }
 
+/* ---- 啟動幕：蓋住未定位的全台地圖，首次視野就位後淡出 ---- */
+.map-splash {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  opacity: 1;
+  transition: opacity 320ms var(--ease);
+}
+
+.map-splash.splash-hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+}
+
+.splash-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.splash-spinner {
+  margin-top: 0.9rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid var(--line);
+  border-top-color: var(--brand);
+  animation: spin 0.9s linear infinite;
+}
+
+.splash-status {
+  font-size: 0.78rem;
+  color: var(--ink-3);
+}
+
 /* ---- 地圖搜尋（Google Maps 慣例：左上 icon 展開為搜尋覆層） ---- */
 .search-fab {
   position: absolute;

@@ -14,8 +14,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: '順路油站',
-        short_name: '順路油站',
+        name: '順路加油',
+        short_name: '順路加油',
         description: '台灣中油直營加油站地圖',
         lang: 'zh-TW',
         theme_color: '#1a56db',
