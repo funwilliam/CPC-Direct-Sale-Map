@@ -47,11 +47,11 @@ export class GoogleMapAdapter implements MapAdapter {
       zoom: opts.zoom,
       // 渲染引擎二選一（硬取捨，設定頁可切換，存 localStorage，預設點陣）：
       // 點陣＝平移絲滑、縮放有載入區塊；向量＝縮放絲滑無載入區塊、部分機型平移偶頓挫。
-      // DEMO_MAP_ID 實證為點陣；正式 Map ID 為向量（非機密；環境變數可覆寫）。
+      // 兩個皆為專案正式 Map ID（設定檔決定渲染型別；非機密，環境變數可覆寫向量端）。
       mapId:
         localStorage.getItem('mapRender') === 'vector'
           ? (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) || '512312ef3444ebee99784cc2'
-          : 'DEMO_MAP_ID',
+          : '512312ef3444ebee79404182', // 順路加油-點陣（光柵）
       // 圖磚載入前的底色改接近地圖陸地色（預設深灰塊很搶眼）
       backgroundColor: '#f2f0ed',
       disableDefaultUI: true,
