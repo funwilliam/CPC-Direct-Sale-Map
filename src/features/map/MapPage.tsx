@@ -70,9 +70,13 @@ export default function MapPage({
           // 測試觀測點：目前 zoom（E2E 用，無 UI 影響）
           if (containerRef.current) containerRef.current.dataset.zoom = String(zoom);
         });
+        adapter.setLayerVisibility('franchise', false); // 初始 zoom 7 < 門檻，先關閉加盟層
         setReady(true);
       })
-      .catch((e) => setMapError(String(e?.message ?? e)));
+      .catch((e) => {
+        console.error('地圖載入失敗', e); // 技術細節進 console，不裸露給使用者
+        setMapError(String(e?.message ?? e));
+      });
 
     return () => {
       cancelled = true;
@@ -150,8 +154,8 @@ export default function MapPage({
     <div className="map-page">
       {mapError ? (
         <div className="map-error">
-          <p>地圖載入失敗：{mapError}</p>
-          <p>清單頁與油價頁仍可正常使用。</p>
+          <p>地圖暫時無法載入，請檢查網路後重新開啟。</p>
+          <p>搜尋與油價功能仍可正常使用。</p>
         </div>
       ) : (
         <div ref={containerRef} className="map-container" />
@@ -174,7 +178,7 @@ export default function MapPage({
         </button>
       )}
       {notice && (
-        <div className="map-notice" onClick={() => setNotice(null)}>
+        <div className="map-notice" role="status" aria-live="polite" onClick={() => setNotice(null)}>
           {notice}
         </div>
       )}

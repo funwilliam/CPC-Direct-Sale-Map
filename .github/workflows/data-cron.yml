@@ -1,12 +1,15 @@
 name: Data Update
 on:
   schedule:
-    # 每週一 02:30 台灣時間（UTC 週日 18:30）— 中油牌價週日中午公告、週一生效
+    # 主排程：週一 02:30 台灣時間（UTC 週日 18:30）— 中油牌價週日公告、週一生效
     - cron: '30 18 * * 0'
+    # 備援排程：週一 14:30 台灣時間（GitHub cron 可能因負載被跳過；job 冪等，無變更不 commit）
+    - cron: '30 6 * * 1'
   workflow_dispatch:
 
 permissions:
   contents: write
+  issues: write
 
 # 避免排程與手動觸發重疊執行（皆會 commit 資料）
 concurrency:
@@ -36,5 +39,16 @@ jobs:
             echo "資料無變更，跳過 commit"
           else
             git commit -m "data: 排程更新 $(date -u +%Y-%m-%d)"
-            git push
+            # push 前 rebase：避免與使用者 push 競態造成 non-fast-forward 失敗
+            git pull --rebase origin main
+            git push || (git pull --rebase origin main && git push)
           fi
+      - name: 失敗告警（開 Issue，防靜默失敗）
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "🔴 資料更新排程失敗 $(date -u +%Y-%m-%d)" \
+            --body "Data Update workflow 失敗，請查看 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --repo ${{ github.repository }} || true

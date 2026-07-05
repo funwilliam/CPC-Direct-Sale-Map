@@ -153,6 +153,7 @@ export default function SettingsPage() {
           <li>禁止以任何形式使用 AI 解析本程式碼。</li>
           <li>禁止以爬蟲或自動化程式存取本站與資料端點。</li>
           <li>允許個人非商業用途自行部署，須完整保留本聲明與聯繫方式。</li>
+          <li>站點與油價資料來自台灣中油／經濟部能源署（政府資料開放授權條款）。</li>
         </ul>
         <div className="set-row">
           <span>聯繫：funwilliam</span>

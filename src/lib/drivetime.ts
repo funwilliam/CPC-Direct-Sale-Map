@@ -54,9 +54,13 @@ function writeCache(key: string, data: Record<string, number>): void {
   }
 }
 
+/** 查無路線的負快取哨兵值：記住「查過但沒結果」，同格網不再重複計費查詢 */
+export const NO_ROUTE = -1;
+
 /**
  * 取得使用者到各站的行車分鐘數。呼叫端應先粗篩（≤25 站）。
  * 失敗（API 未啟用/超額）回傳空物件，呼叫端 fallback 直線距離排序。
+ * 值 < 0（NO_ROUTE）＝查過但無路線，呼叫端應視同無值。
  */
 export async function getDriveMinutes(
   user: LatLng,
@@ -80,6 +84,9 @@ export async function getDriveMinutes(
     res.rows[0]?.elements.forEach((el, i) => {
       if (el.status === 'OK' && el.duration) {
         cached[missing[i].id] = Math.round(el.duration.value / 60);
+      } else {
+        // 負快取：ZERO_RESULTS 等無路線結果也記下來，避免每次開搜尋都重打 API
+        cached[missing[i].id] = NO_ROUTE;
       }
     });
     writeCache(key, cached);

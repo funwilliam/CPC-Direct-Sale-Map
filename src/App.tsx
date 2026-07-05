@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import MapPage from './features/map/MapPage.tsx';
 import InstallPrompt from './features/install/InstallPrompt.tsx';
-import PricePage from './features/price/PricePage.tsx';
-import SettingsPage from './features/settings/SettingsPage.tsx';
 import { loadData } from './lib/dataStore.ts';
+
+// 非首屏分頁延遲載入（首屏＝地圖，油價/設定進分頁才拉 chunk）
+const PricePage = lazy(() => import('./features/price/PricePage.tsx'));
+const SettingsPage = lazy(() => import('./features/settings/SettingsPage.tsx'));
 import type { LatLng } from './lib/geo.ts';
 import type { CurrentPriceFile, PriceHistoryFile, Station, StationsFile } from './types/station.ts';
 
@@ -35,7 +37,10 @@ export default function App() {
         setPrice(p);
         setHistory(h);
       })
-      .catch((e) => setDataError(String(e)));
+      .catch((e) => {
+        console.error('資料載入失敗', e); // 技術細節進 console
+        setDataError('暫時無法載入站點資料，請檢查網路後重新開啟。');
+      });
   }, []);
 
   // 搜尋覆層的距離/車程共用一次定位（地圖頁的定位由 MapPage 自行處理）
@@ -54,7 +59,7 @@ export default function App() {
       {/* 非地圖分頁：狀態列區域用該頁自身的底色延伸（iOS 會依底色自動切換狀態列文字深淺）；
           地圖分頁：地圖延伸到狀態列下，頂部漸層 scrim 保持時間可讀（原生地圖慣例） */}
       {tab !== 'map' && <div className={`status-strip strip-${tab}`} aria-hidden="true" />}
-      {dataError && <p className="error page-pad">站點資料載入失敗：{dataError}</p>}
+      {dataError && <p className="error page-pad">{dataError}</p>}
       <main className="app-main">
         {/* 地圖分頁用 display 切換保留實例，避免重複載入 Maps JS */}
         <div style={{ display: tab === 'map' ? 'contents' : 'none' }}>
@@ -67,10 +72,12 @@ export default function App() {
             onSelect={setSelected}
           />
         </div>
-        {tab === 'price' && <PricePage price={price} history={history} />}
-        {tab === 'settings' && <SettingsPage />}
+        <Suspense fallback={<p className="page-pad">載入中…</p>}>
+          {tab === 'price' && <PricePage price={price} history={history} />}
+          {tab === 'settings' && <SettingsPage />}
+        </Suspense>
       </main>
-      <InstallPrompt />
+      {tab === 'map' && <InstallPrompt />}
       <nav className="tab-bar" aria-label="主要導覽">
         {(
           [

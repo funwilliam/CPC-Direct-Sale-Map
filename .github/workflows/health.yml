@@ -1,0 +1,31 @@
+name: Data Freshness Check
+# Dead man's switch：排程「沒跑」不會自己報錯，只能由獨立檢查發現「資料悄悄過期」
+on:
+  schedule:
+    # 週二 07:15 台灣時間（兩個資料更新排程之後）
+    - cron: '15 23 * * 1'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 檢查線上資料新鮮度（> 9 天即告警）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          GEN=$(curl -sf "https://funwilliam.github.io/CPC-Direct-Sale-Map/data/current_price.json" | jq -r '.generatedAt')
+          echo "generatedAt: $GEN"
+          AGE_DAYS=$(( ( $(date -u +%s) - $(date -u -d "$GEN" +%s) ) / 86400 ))
+          echo "資料年齡: ${AGE_DAYS} 天"
+          if [ "$AGE_DAYS" -gt 9 ]; then
+            gh issue create \
+              --title "🟠 線上油價資料已 ${AGE_DAYS} 天未更新" \
+              --body "current_price.json 的 generatedAt=$GEN，超過 9 天。請檢查 Data Update 排程是否失效：${{ github.server_url }}/${{ github.repository }}/actions/workflows/data-cron.yml" \
+              --repo ${{ github.repository }} || true
+            exit 1
+          fi

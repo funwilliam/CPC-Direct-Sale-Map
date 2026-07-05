@@ -65,6 +65,42 @@ button {
   font-family: inherit;
 }
 
+/* 鍵盤焦點環（桌面 a11y）：品牌色、僅鍵盤觸發時顯示 */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* 觸控目標擴充：視覺尺寸不變，以透明偽元素把命中區墊高到 ≥44px
+   （design.md 門檻；套用於視覺上偏小的 chip 與圓形關閉鈕） */
+.filter-btn,
+.copy-btn,
+.card-close,
+.install-close,
+.search-back,
+.search-clear,
+.range-chips button {
+  position: relative;
+}
+
+.filter-btn::after,
+.copy-btn::after,
+.card-close::after,
+.install-close::after,
+.search-back::after,
+.search-clear::after,
+.range-chips button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: 100%;
+}
+
 .app {
   /* 定高供 flex 子項（tab bar 貼底）；html 的 min-height 修法負責消除底部白 bar */
   position: relative;
@@ -134,7 +170,7 @@ button {
   border: 0;
   border-radius: var(--radius-m);
   background: none;
-  color: var(--ink-3);
+  color: var(--ink-2);
   cursor: pointer;
   transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
   min-height: 52px;
@@ -172,7 +208,7 @@ button {
 
 .attribution {
   font-size: 0.68rem;
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-align: center;
   padding: 0.75rem 1rem 1rem;
   margin: 0;
@@ -277,7 +313,7 @@ button {
 
 .splash-status {
   font-size: 0.78rem;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 /* ---- 地圖搜尋（Google Maps 慣例：左上 icon 展開為搜尋覆層） ---- */
@@ -373,7 +409,7 @@ button {
 .search-empty {
   padding: 1.2rem;
   text-align: center;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-size: 0.85rem;
   list-style: none;
 }
@@ -519,6 +555,11 @@ button {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 700;
+  /* 超長站名截斷（flex 子項需 min-width:0 才會收縮） */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge {
@@ -597,7 +638,7 @@ button {
 
 .chip-off {
   background: var(--bg);
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-decoration: line-through;
 }
 
@@ -669,7 +710,7 @@ button {
 .result-count {
   margin: 0.45rem 1rem;
   font-size: 0.72rem;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .station-list {
@@ -710,6 +751,11 @@ button {
 .row-name {
   font-weight: 600;
   font-size: 0.95rem;
+  /* 超長站名截斷（flex 子項需 min-width:0 才會收縮） */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-dist {
@@ -721,7 +767,7 @@ button {
 }
 
 .row-franchise .row-dist {
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .row-sub {
@@ -734,7 +780,7 @@ button {
 }
 
 .row-fuels {
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 /* ---- 油價頁 ---- */
@@ -791,12 +837,12 @@ button {
 }
 
 .price-delta.flat {
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .price-note {
   font-size: 0.75rem;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 /* ---- 設定頁 ---- */
@@ -850,7 +896,7 @@ button {
 
 .set-hint {
   font-size: 0.76rem;
-  color: var(--ink-3);
+  color: var(--ink-2);
   line-height: 1.55;
   margin: 0.55rem 0 0;
 }
@@ -890,7 +936,7 @@ button {
 }
 
 .set-btn:disabled {
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .set-details {
@@ -920,7 +966,7 @@ button {
 
 .set-log li span {
   display: block;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1064,7 +1110,7 @@ button {
 }
 
 .axis-text {
-  fill: var(--ink-3);
+  fill: var(--ink-2); /* 圖表刻度承載資訊，須達對比門檻 */
   font-size: 10px;
 }
 

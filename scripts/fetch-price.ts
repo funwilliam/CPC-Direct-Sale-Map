@@ -26,12 +26,19 @@ async function main() {
     JSON.stringify(CurrentPriceFileSchema.parse({ generatedAt, source: PRICE_SOURCE, current: entry }))
   );
 
+  // 僅「檔案不存在」允許從單筆起始；其他錯誤（JSON/schema 壞掉）必須 fail，
+  // 否則週更會把整份多年歷史靜默覆寫成一筆（不可逆資料損失）
   let entries = [entry];
+  let raw: string | null = null;
   try {
-    const prev = PriceHistoryFileSchema.parse(JSON.parse(await readFile(HISTORY_OUT, 'utf8')));
-    entries = mergeHistory(prev.entries, entry);
-  } catch {
+    raw = await readFile(HISTORY_OUT, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     console.warn('無既有 price_history.json，從當前牌價起始（歷史回填見 data:backfill）');
+  }
+  if (raw !== null) {
+    const prev = PriceHistoryFileSchema.parse(JSON.parse(raw)); // 解析失敗 → job fail，不覆寫
+    entries = mergeHistory(prev.entries, entry);
   }
   await writeFile(
     HISTORY_OUT,

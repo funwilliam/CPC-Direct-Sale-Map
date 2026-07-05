@@ -8,6 +8,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 # 官方範本：部署不可中途取消（中斷會留下孤兒 artifact 導致後續部署撞名失敗），
 # 改為排隊等待前一個完成
@@ -21,9 +22,9 @@ jobs:
     timeout-minutes: 15
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     outputs:
-      page_url: ${{ steps.deployment.outputs.page_url }}
+      page_url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -39,7 +40,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+      # deploy-pages 實測約 9% 暫時性失敗（"try again later"）→ 同 run 原地重試一次
       - id: deployment
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
 
   # 後部署驗收：對正式網址跑 3 條 E2E 冒煙（ADR-008）
@@ -58,3 +64,18 @@ jobs:
       - run: npx playwright test
         env:
           E2E_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+
+  # 任一環節失敗 → 開 Issue 告警（防「紅了沒人看」的靜默失敗）
+  alert:
+    needs: [deploy, e2e]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "🔴 部署或線上驗收失敗 $(date -u +%Y-%m-%d)" \
+            --body "Deploy/E2E 失敗，線上可能是舊版或壞版。Run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --repo ${{ github.repository }} || true

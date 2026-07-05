@@ -19,8 +19,8 @@
 ## 行為
 
 - 取代原 debug 連點手勢（已移除）。
-- 引擎預設：`mapRender` 未設或非 'vector' → 點陣（DEMO_MAP_ID）；
-  'vector' → 正式向量 Map ID。
+- 引擎預設：`mapRender` 未設或非 'vector' → 點陣 Map ID `512312ef3444ebee79404182`；
+  'vector' → 向量 Map ID `512312ef3444ebee99784cc2`。
 
 ## 驗收
 

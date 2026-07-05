@@ -31,14 +31,32 @@ export default function SearchOverlay({ stations, userLocation, onPick }: Props)
   // 車程只在「打開搜尋」時查一次：10km 內最近 10 站（省 API；有 sessionStorage 快取）
   useEffect(() => {
     if (!open || !userLocation || stations.length === 0) return;
+    let cancelled = false; // 卸載/條件變動後不再 setState
     const nearby = sortByDistance(stations, userLocation, haversineKm)
       .filter((s) => haversineKm(userLocation, s) <= DRIVE_PREFILTER_KM)
       .slice(0, DRIVE_QUERY_LIMIT);
-    if (nearby.length > 0) getDriveMinutes(userLocation, nearby).then(setDriveMin);
+    if (nearby.length > 0) {
+      void getDriveMinutes(userLocation, nearby).then((r) => {
+        if (!cancelled) setDriveMin(r);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
   }, [open, userLocation, stations]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+  }, [open]);
+
+  // Esc 關閉（桌面慣例）
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   const results = useMemo(() => {
@@ -48,8 +66,9 @@ export default function SearchOverlay({ stations, userLocation, onPick }: Props)
       base = searchStations(fuse, query);
     } else if (userLocation) {
       base = sortByDistance(stations, userLocation, haversineKm).sort((a, b) => {
-        const da = driveMin[a.id];
-        const db = driveMin[b.id];
+        // < 0（NO_ROUTE 負快取）視同無值 → fallback 直線距離順序
+        const da = driveMin[a.id] >= 0 ? driveMin[a.id] : undefined;
+        const db = driveMin[b.id] >= 0 ? driveMin[b.id] : undefined;
         if (da !== undefined && db !== undefined) return da - db;
         if (da !== undefined) return -1;
         if (db !== undefined) return 1;
@@ -87,7 +106,15 @@ export default function SearchOverlay({ stations, userLocation, onPick }: Props)
   }
 
   return (
-    <div className="search-overlay">
+    <div
+      className="search-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="搜尋加油站"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setOpen(false); // 點遮罩關閉（Google Maps 慣例）
+      }}
+    >
       <div className="search-sheet">
         <div className="search-bar">
           <button className="search-back" onClick={() => setOpen(false)} aria-label="關閉搜尋">
@@ -134,7 +161,7 @@ export default function SearchOverlay({ stations, userLocation, onPick }: Props)
                   )}
                   {userLocation && (
                     <span className="row-dist">
-                      {driveMin[s.id] !== undefined
+                      {driveMin[s.id] >= 0
                         ? `約 ${driveMin[s.id]} 分鐘`
                         : `${haversineKm(userLocation, s).toFixed(1)} km`}
                     </span>

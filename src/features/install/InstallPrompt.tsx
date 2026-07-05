@@ -3,6 +3,22 @@ import { useEffect, useState } from 'react';
 const DISMISS_KEY = 'installPromptDismissed';
 const SHOW_DELAY_MS = 4000; // 不跟首屏地圖搶注意力
 
+// localStorage 防護（隱私模式等停用儲存時不拋錯）
+const safeGet = (k: string) => {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+const safeSet = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* ignore */
+  }
+};
+
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -29,7 +45,7 @@ export default function InstallPrompt() {
   const [mode, setMode] = useState<'hidden' | 'native' | 'ios'>('hidden');
 
   useEffect(() => {
-    if (isStandalone() || localStorage.getItem(DISMISS_KEY)) return;
+    if (isStandalone() || safeGet(DISMISS_KEY)) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onBip = (e: Event) => {
@@ -49,7 +65,7 @@ export default function InstallPrompt() {
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, '1');
+    safeSet(DISMISS_KEY, '1');
     setMode('hidden');
   };
 
@@ -57,7 +73,7 @@ export default function InstallPrompt() {
     if (!deferred) return;
     await deferred.prompt();
     const { outcome } = await deferred.userChoice;
-    if (outcome === 'dismissed') localStorage.setItem(DISMISS_KEY, '1');
+    if (outcome === 'dismissed') safeSet(DISMISS_KEY, '1');
     setMode('hidden');
   };
 

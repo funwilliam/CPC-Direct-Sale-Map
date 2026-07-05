@@ -259,6 +259,12 @@ export class GoogleMapAdapter implements MapAdapter {
     this.visibleFranchise.clear();
     this.selectedId = null;
     this.userMarker = null;
+    if (this.map) {
+      // 清監聽避免洩漏；清容器 DOM 讓（開發模式 StrictMode 的）重掛載乾淨起步
+      google.maps.event.clearInstanceListeners(this.map);
+      const div = this.map.getDiv() as HTMLElement;
+      div.replaceChildren();
+    }
     this.map = null;
   }
 
@@ -281,6 +287,7 @@ export class GoogleMapAdapter implements MapAdapter {
         content: this.makeContent(s.id === this.selectedId ? 'selected' : 'direct'),
         title: s.name,
       });
+      if (s.id === this.selectedId) marker.zIndex = 1200; // 重建時保持選中置頂
       marker.addListener('click', () => this.markerClickCb?.(s.id));
       this.directPool.set(s.id, marker);
       directMarkers.push(marker);
@@ -308,6 +315,10 @@ export class GoogleMapAdapter implements MapAdapter {
           count++;
         }
       }
+    }
+    // 選中的加盟站不受 CAP 與可見層開關影響（否則紅色高亮可能不顯示）
+    if (this.selectedId && this.franchiseStations.some((s) => s.id === this.selectedId)) {
+      wanted.add(this.selectedId);
     }
 
     for (const id of this.visibleFranchise) {

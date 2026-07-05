@@ -45,8 +45,12 @@ function logSync(msg: string): void {
 }
 
 export function getLastSync(): number | null {
-  const v = Number(localStorage.getItem(SYNC_KEY) ?? 0);
-  return v > 0 ? v : null;
+  try {
+    const v = Number(localStorage.getItem(SYNC_KEY) ?? 0);
+    return v > 0 ? v : null;
+  } catch {
+    return null; // 儲存被停用（隱私模式等）
+  }
 }
 
 function urls(): string[] {
@@ -62,7 +66,11 @@ async function fetchAllFresh(): Promise<Response[]> {
 
 async function putAll(cache: Cache, responses: Response[]): Promise<void> {
   await Promise.all(urls().map((u, i) => cache.put(u, responses[i].clone())));
-  localStorage.setItem(SYNC_KEY, String(Date.now()));
+  try {
+    localStorage.setItem(SYNC_KEY, String(Date.now()));
+  } catch {
+    /* 寫時間戳失敗不應中斷資料流（隱私模式等） */
+  }
 }
 
 /** 伺服器有新一輪排程資料時背景更新（不阻塞、失敗無感） */
@@ -85,7 +93,18 @@ export interface AppData {
 }
 
 export async function loadData(): Promise<AppData> {
-  void caches.delete('data-json'); // 清 v1.2 舊版 SW 遺留的孤兒快取（一次性回收）
+  // 非安全情境（非 https 測試）無 Cache API → 退回純網路載入，不快取
+  if (!('caches' in globalThis)) {
+    const fresh = await fetchAllFresh();
+    const [stations, price, history] = (await Promise.all(fresh.map((r) => r.json()))) as [
+      StationsFile,
+      CurrentPriceFile,
+      PriceHistoryFile,
+    ];
+    return { stations, price, history };
+  }
+
+  void caches.delete('data-json').catch(() => {}); // 清 v1.2 舊版 SW 遺留的孤兒快取
   const cache = await caches.open(CACHE_NAME);
   let responses = await Promise.all(urls().map((u) => cache.match(u)));
 

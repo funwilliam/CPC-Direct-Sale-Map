@@ -19,3 +19,7 @@ Phase 1 MVP 需要：載入 Google Maps JS、~2000 站 marker 聚合、清單頁
 
 三套件皆為運行時依賴；bundle 影響納入效能預算監控（首屏 JS < 200KB gzip，
 Maps JS 本體為外部載入不計入）。
+
+> 修訂附註（2026-07-05）：DEMO_MAP_ID 已替換為正式雙 Map ID
+> （點陣 512312ef3444ebee79404182 預設／向量 512312ef3444ebee99784cc2），
+> 引擎切換見 spec/settings.md。ADR 本體不改，僅附註現況。

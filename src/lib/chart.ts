@@ -4,9 +4,9 @@ import type { PriceEntry } from '../types/station.ts';
 /** 取最後 N 個月的資料（null = 全部）；至少保留 2 筆才能畫線 */
 export function filterByMonths(entries: PriceEntry[], months: number | null): PriceEntry[] {
   if (months === null || entries.length === 0) return entries;
-  const last = new Date(entries[entries.length - 1].date);
-  const cutoff = new Date(last);
-  cutoff.setMonth(cutoff.getMonth() - months);
+  // 全程 UTC 計算（"YYYY-MM-DD" 以 UTC 解析，混用 local getter 在負時區會偏一日）
+  const cutoff = new Date(entries[entries.length - 1].date);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - months);
   const iso = cutoff.toISOString().slice(0, 10);
   const out = entries.filter((e) => e.date >= iso);
   return out.length >= 2 ? out : entries.slice(-2);
@@ -72,5 +72,5 @@ export function timeTicks(startMs: number, endMs: number, maxTicks = 6): [number
       ticks.push([new Date(y, 0, 1).getTime(), String(y)]);
     }
   }
-  return ticks.slice(0, maxTicks + 2);
+  return ticks.slice(0, maxTicks);
 }

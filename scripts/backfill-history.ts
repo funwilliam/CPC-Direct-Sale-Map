@@ -31,21 +31,25 @@ export async function fetchOil111History(start: string, end: string): Promise<Pr
   const entries: PriceEntry[] = [];
   let dropped = 0;
   for (const r of json.data.gasoline) {
-    if (r.A92 == null || r.A95 == null || r.A98 == null || r.Achai == null) {
+    // 逐筆容錯：單筆缺值/格式異常只略過該筆，不讓整份 20 年歷史匯入失敗
+    try {
+      if (r.A92 == null || r.A95 == null || r.A98 == null || r.Achai == null) throw new Error('缺值');
+      const [y, m, d] = r.Date.split('/');
+      entries.push(
+        PriceEntrySchema.parse({
+          date: `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`,
+          g92: r.A92,
+          g95: r.A95,
+          g98: r.A98,
+          diesel: r.Achai,
+        })
+      );
+    } catch {
       dropped++;
-      continue;
     }
-    entries.push(
-      PriceEntrySchema.parse({
-        date: r.Date.replaceAll('/', '-'),
-        g92: r.A92,
-        g95: r.A95,
-        g98: r.A98,
-        diesel: r.Achai,
-      })
-    );
   }
-  if (dropped > 0) console.warn(`oil111 有 ${dropped} 筆缺值已略過`);
+  if (dropped > 0) console.warn(`oil111 有 ${dropped} 筆缺值/異常已略過`);
+  if (entries.length === 0) throw new Error('oil111 無有效資料');
   return entries;
 }
 

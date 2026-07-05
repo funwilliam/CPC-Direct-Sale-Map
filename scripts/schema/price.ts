@@ -39,9 +39,9 @@ export const PriceHistoryFileSchema = z.object({
 
 export type PriceHistoryFile = z.infer<typeof PriceHistoryFileSchema>;
 
-/** 民國 YYYMMDD → ISO YYYY-MM-DD */
+/** 民國 YY(Y)MMDD → ISO YYYY-MM-DD（民國 2-3 位年皆可） */
 export function rocToIso(roc: string): string {
-  const m = roc.trim().match(/^(\d{3})(\d{2})(\d{2})$/);
+  const m = roc.trim().match(/^(\d{2,3})(\d{2})(\d{2})$/);
   if (!m) throw new Error(`無法解析民國日期: "${roc}"`);
   const year = Number(m[1]) + 1911;
   return `${year}-${m[2]}-${m[3]}`;

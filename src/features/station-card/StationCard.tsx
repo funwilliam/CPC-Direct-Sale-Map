@@ -14,6 +14,15 @@ export default function StationCard({ station, onClose }: Props) {
     setCopied(false);
   }, [station.id]);
 
+  // Esc 關閉（桌面慣例）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(station.address);

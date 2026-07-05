@@ -93,13 +93,21 @@ export function toPriceEntry(rawList: unknown[]): PriceEntry {
   const dates = new Set(Object.values(rows).map((r) => r.牌價生效日期.trim()));
   if (dates.size !== 1) throw new Error(`四油品生效日期不一致: ${[...dates].join(',')}`);
 
-  return PriceEntrySchema.parse({
+  const entry = PriceEntrySchema.parse({
     date: rocToIso(rows.g92.牌價生效日期),
     g92: rows.g92.參考牌價_金額,
     g95: rows.g95.參考牌價_金額,
     g98: rows.g98.參考牌價_金額,
     diesel: rows.diesel.參考牌價_金額,
   });
+  // 邏輯斷言（ADR-003 精神：壞資料不入庫）：辛烷值越高越貴、單價須在合理區間
+  if (!(entry.g92 < entry.g95 && entry.g95 < entry.g98)) {
+    throw new Error(`油價層級異常: 92=${entry.g92} 95=${entry.g95} 98=${entry.g98}`);
+  }
+  for (const [k, v] of Object.entries({ g92: entry.g92, g95: entry.g95, g98: entry.g98, diesel: entry.diesel })) {
+    if (v < 5 || v > 100) throw new Error(`${k}=${v} 超出合理區間 [5,100] 元/公升`);
+  }
+  return entry;
 }
 
 /** 將新 entry 併入歷史（以 date 去重、覆蓋同日舊值、由舊到新排序） */
