@@ -34,12 +34,21 @@ body,
   height: 100%;
 }
 
+/* iOS 獨立模式 black-translucent 修法（Apple PWA 慣例）：
+   全螢幕時 iOS 把文件上移 safe-area-inset-top，底部因此露出等高白 bar。
+   補回這段高度即可抵銷上移、消除底部白 bar。 */
+html {
+  min-height: calc(100% + env(safe-area-inset-top));
+}
+
 body {
   margin: 0;
   font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
   color: var(--ink);
-  background: var(--bg);
+  /* 與 tab bar 同色：視口收合/回彈露出的區域不會出現色差層（v1.2 回饋修正） */
+  background: var(--surface);
   -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* app 殼不捲動，杜絕 iOS 橡皮筋露底 */
 }
 
 button {
@@ -47,7 +56,9 @@ button {
 }
 
 .app {
-  height: 100%;
+  /* 定高供 flex 子項（tab bar 貼底）；html 的 min-height 修法負責消除底部白 bar */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -55,8 +66,15 @@ button {
 /* ---- 全螢幕邊到邊（v1.2：移除 header，地圖延伸到狀態列下） ---- */
 .status-strip {
   height: env(safe-area-inset-top);
-  background: var(--brand);
   flex: none;
+}
+
+.status-strip.strip-list {
+  background: var(--surface); /* 延續清單頁搜尋列的白底 */
+}
+
+.status-strip.strip-price {
+  background: var(--bg); /* 延續油價頁的頁面底色 */
 }
 
 .logo-mark {
@@ -75,6 +93,7 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--bg); /* 頁面灰底只屬於內容區 */
 }
 
 .page-pad {
@@ -87,7 +106,8 @@ button {
   display: flex;
   background: var(--surface);
   border-top: 1px solid var(--line);
-  padding: 0.3rem 0.75rem calc(0.4rem + env(safe-area-inset-bottom));
+  /* 標準 iOS tab bar：底部留 Home Indicator 安全區，標籤落在其上方（原生慣例） */
+  padding: 0.3rem 0.75rem calc(env(safe-area-inset-bottom) + 0.4rem);
   gap: 0.5rem;
   flex: none;
 }
@@ -97,27 +117,55 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   padding: 0.4rem 0 0.3rem;
   border: 0;
   border-radius: var(--radius-m);
   background: none;
-  font-size: 0.7rem;
-  font-weight: 500;
   color: var(--ink-3);
   cursor: pointer;
   transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
   min-height: 52px;
+  -webkit-tap-highlight-color: transparent; /* 關掉 iOS 按壓灰底塊 */
+}
+
+/* 顯式標籤規格：iOS 獨立模式曾出現繼承式小字不繪製的問題，
+   所有繪製相關屬性直接指定、不走繼承鏈 */
+.tab-label {
+  display: block;
+  font-family: system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: inherit;
+  letter-spacing: 0.02em;
 }
 
 .tab-bar button.tab-on {
   color: var(--brand);
   background: var(--brand-tint);
+}
+
+.tab-bar button.tab-on .tab-label {
   font-weight: 700;
 }
 
 .tab-bar button:active {
   transform: scale(0.97);
+}
+
+/* 診斷模式（?debug=1）：讓標籤與 tab bar 邊界醒目，實機截圖定位覆蓋問題 */
+.app.debug .tab-bar {
+  outline: 3px solid magenta;
+}
+.app.debug .tab-label {
+  background: yellow;
+  color: red;
+  outline: 2px solid red;
+}
+.app.debug .tab-bar button {
+  outline: 1px dashed blue;
 }
 
 .error {

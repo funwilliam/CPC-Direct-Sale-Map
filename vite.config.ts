@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 // GitHub Pages 專案站點路徑
 export default defineConfig({
   base: '/CPC-Direct-Sale-Map/',
+  define: {
+    // build 識別碼：顯示於油價頁頁尾，用於確認裝置上實際運行的版本
+    __BUILD_ID__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
+  },
   plugins: [
     react(),
     VitePWA({

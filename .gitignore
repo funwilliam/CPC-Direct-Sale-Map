@@ -22,3 +22,6 @@ Thumbs.db
 # playwright
 test-results/
 playwright-report/
+
+# harness internals
+.claude/scheduled_tasks.lock

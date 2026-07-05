@@ -3,10 +3,15 @@ import MapPage from './features/map/MapPage.tsx';
 import InstallPrompt from './features/install/InstallPrompt.tsx';
 import ListPage from './features/list/ListPage.tsx';
 import PricePage from './features/price/PricePage.tsx';
+import DebugPanel from './features/debug/DebugPanel.tsx';
 import type { LatLng } from './lib/geo.ts';
 import type { CurrentPriceFile, PriceHistoryFile, Station, StationsFile } from './types/station.ts';
 
 type Tab = 'map' | 'list' | 'price';
+
+const initialDebug =
+  typeof location !== 'undefined' &&
+  (location.search.includes('debug') || localStorage.getItem('debug') === '1');
 
 const TAB_ICONS: Record<Tab, string> = {
   // 24x24 stroke path（設計規範見 docs/spec/design.md §圖標）
@@ -24,6 +29,28 @@ export default function App() {
   const [selected, setSelected] = useState<Station | null>(null);
   const [autoFitDone, setAutoFitDone] = useState(false);
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+  const [debug, setDebug] = useState(initialDebug);
+
+  // 獨立模式無法帶 ?debug=1，改用連點手勢：10 秒內連點「同一個」tab 按鈕 7 下切換診斷模式
+  const tapsRef = (useState(() => ({ n: 0, t: 0, key: '' as Tab | '' }))[0]);
+  const toggleDebugByTaps = useCallback(
+    (key: Tab) => {
+      const now = Date.now();
+      const continuing = tapsRef.key === key && now - tapsRef.t < 10_000;
+      tapsRef.n = continuing ? tapsRef.n + 1 : 1;
+      tapsRef.t = now;
+      tapsRef.key = key;
+      if (tapsRef.n >= 7) {
+        tapsRef.n = 0;
+        setDebug((d) => {
+          const next = !d;
+          localStorage.setItem('debug', next ? '1' : '0');
+          return next;
+        });
+      }
+    },
+    [tapsRef]
+  );
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL;
@@ -57,10 +84,11 @@ export default function App() {
   const onAutoFitDone = useCallback(() => setAutoFitDone(true), []);
 
   return (
-    <div className="app">
-      {/* 非地圖分頁：狀態列區域以品牌色填充（瀏覽器內高度為 0 不可見）；
+    <div className={`app${debug ? ' debug' : ''}`}>
+      {debug && <DebugPanel />}
+      {/* 非地圖分頁：狀態列區域用該頁自身的底色延伸（iOS 會依底色自動切換狀態列文字深淺）；
           地圖分頁：地圖延伸到狀態列下，頂部漸層 scrim 保持時間可讀（原生地圖慣例） */}
-      {tab !== 'map' && <div className="status-strip" aria-hidden="true" />}
+      {tab !== 'map' && <div className={`status-strip strip-${tab}`} aria-hidden="true" />}
       {dataError && <p className="error page-pad">站點資料載入失敗：{dataError}</p>}
       <main className="app-main">
         {/* 地圖分頁用 display 切換保留實例，避免重複載入 Maps JS */}
@@ -90,13 +118,16 @@ export default function App() {
           <button
             key={key}
             className={tab === key ? 'tab-on' : ''}
-            onClick={() => setTab(key)}
+            onClick={() => {
+              setTab(key);
+              toggleDebugByTaps(key);
+            }}
             aria-current={tab === key ? 'page' : undefined}
           >
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d={TAB_ICONS[key]} />
             </svg>
-            <span>{label}</span>
+            <span className="tab-label">{label}</span>
           </button>
         ))}
       </nav>

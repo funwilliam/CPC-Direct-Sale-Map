@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { GoogleMapAdapter } from '../../map-adapter/google.ts';
 import type { MapAdapter } from '../../map-adapter/types.ts';
 import { planInitialView, MAX_RADIUS_KM, type LatLng } from '../../lib/geo.ts';
+import { bumpMapLoad } from '../../lib/usage.ts';
 import type { Station } from '../../types/station.ts';
 import StationCard from '../station-card/StationCard.tsx';
 
@@ -36,6 +37,7 @@ export default function MapPage({ stations, autoFitDone, onAutoFitDone, selected
       .mount(el, { center: { lat: 23.7, lng: 121 }, zoom: 7 })
       .then(() => {
         if (cancelled) return;
+        bumpMapLoad(); // 本機計費估算：一次 new Map() ≈ 一次 Dynamic Maps load
         adapter.onViewportChange(({ zoom }) => {
           adapter.setLayerVisibility('franchise', zoom >= FRANCHISE_MIN_ZOOM);
           // 測試觀測點：目前 zoom（E2E 用，無 UI 影響）
