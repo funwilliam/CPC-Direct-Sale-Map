@@ -22,6 +22,7 @@ export class GoogleMapAdapter implements MapAdapter {
   private mapClickCb: (() => void) | null = null;
   private viewportCb: ((v: { zoom: number }) => void) | null = null;
   private franchiseVisible = true;
+  private animId = 0;
 
   async mount(el: HTMLElement, opts: { center: LatLng; zoom: number }): Promise<void> {
     const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
@@ -44,13 +45,81 @@ export class GoogleMapAdapter implements MapAdapter {
       clickableIcons: false,
       gestureHandling: 'greedy',
     });
+    this.updateHitSize(opts.zoom);
     this.map.addListener('zoom_changed', () => {
       const zoom = this.map?.getZoom();
-      if (zoom !== undefined && zoom !== null) this.viewportCb?.({ zoom });
+      if (zoom !== undefined && zoom !== null) {
+        this.updateHitSize(zoom);
+        this.viewportCb?.({ zoom });
+      }
     });
     // 視窗裁剪：地圖靜止時才增減加盟 marker（拖曳中不動 DOM，保持流暢）
     this.map.addListener('idle', () => this.cullFranchise());
     this.map.addListener('click', () => this.mapClickCb?.());
+  }
+
+  /** marker 命中區大小隨縮放調整（低縮放密集→維持 44 下限；高縮放拉開→放大更好按） */
+  private updateHitSize(zoom: number): void {
+    document.documentElement.style.setProperty('--hit', zoom >= 16 ? '56px' : '44px');
+  }
+
+  /** 以 pin 尖端為錨點，外包一層透明命中區（達 Apple HIG 44pt 可觸控下限） */
+  private wrapPin(pinEl: HTMLElement, direct: boolean): HTMLElement {
+    const mk = document.createElement('div');
+    mk.className = direct ? 'mk mk-direct' : 'mk mk-franchise';
+    mk.appendChild(pinEl);
+    return mk;
+  }
+
+  /** 平滑相機動畫：逐幀插值中心與縮放（Google Maps JS 無內建 flyTo），保住方向感 */
+  private animateCamera(center: LatLng, zoom: number, durationMs = 600): void {
+    const map = this.map;
+    if (!map) return;
+    const c0 = map.getCenter();
+    const z0 = map.getZoom();
+    if (!c0 || z0 === undefined || z0 === null) {
+      map.moveCamera({ center, zoom });
+      return;
+    }
+    const sLat = c0.lat();
+    const sLng = c0.lng();
+    const id = ++this.animId;
+    const start = performance.now();
+    // easeInOutCubic
+    const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const frame = (now: number) => {
+      if (id !== this.animId || this.map !== map) return; // 被新動畫取代或已卸載
+      const t = Math.min(1, (now - start) / durationMs);
+      const k = ease(t);
+      map.moveCamera({
+        center: { lat: sLat + (center.lat - sLat) * k, lng: sLng + (center.lng - sLng) * k },
+        zoom: z0 + (zoom - z0) * k,
+      });
+      if (t < 1) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  /** bounds + padding → 相機中心與縮放（標準 mercator fit 公式，供平滑動畫用） */
+  private boundsToCamera(b: Bounds, padding: number): { center: LatLng; zoom: number } {
+    const div = this.map!.getDiv() as HTMLElement;
+    const W = Math.max(1, div.offsetWidth - padding * 2);
+    const H = Math.max(1, div.offsetHeight - padding * 2);
+    const latRad = (lat: number) => {
+      const s = Math.sin((lat * Math.PI) / 180);
+      return Math.log((1 + s) / (1 - s)) / 2;
+    };
+    const latFraction = Math.max(1e-6, Math.abs(latRad(b.north) - latRad(b.south)) / Math.PI);
+    let lngDiff = b.east - b.west;
+    if (lngDiff < 0) lngDiff += 360;
+    const lngFraction = Math.max(1e-6, lngDiff / 360);
+    const WORLD = 256;
+    const latZoom = Math.log(H / WORLD / latFraction) / Math.LN2;
+    const lngZoom = Math.log(W / WORLD / lngFraction) / Math.LN2;
+    return {
+      center: { lat: (b.north + b.south) / 2, lng: (b.east + b.west) / 2 },
+      zoom: Math.max(3, Math.min(latZoom, lngZoom, 20)),
+    };
   }
 
   unmount(): void {
@@ -82,7 +151,7 @@ export class GoogleMapAdapter implements MapAdapter {
       });
       const marker = new AdvancedMarkerElement({
         position: { lat: s.lat, lng: s.lng },
-        content: pin.element,
+        content: this.wrapPin(pin.element, true),
         title: s.name,
       });
       marker.addListener('click', () => this.markerClickCb?.(s.id));
@@ -136,7 +205,7 @@ export class GoogleMapAdapter implements MapAdapter {
         pin.element.style.opacity = '0.55';
         marker = new AdvancedMarkerElement({
           position: { lat: s.lat, lng: s.lng },
-          content: pin.element,
+          content: this.wrapPin(pin.element, false),
           title: s.name,
         });
         marker.addListener('click', () => this.markerClickCb?.(id));
@@ -168,24 +237,16 @@ export class GoogleMapAdapter implements MapAdapter {
   }
 
   panTo(pos: LatLng, zoom?: number): void {
-    this.map?.panTo(pos);
-    if (zoom !== undefined) this.map?.setZoom(zoom);
+    if (!this.map) return;
+    const target = zoom ?? this.map.getZoom() ?? 15;
+    this.animateCamera(pos, target);
   }
 
   fitBounds(b: Bounds, opts?: { maxZoom?: number; padding?: number }): void {
     if (!this.map) return;
-    // 用地圖選項在動畫「期間」夾住 zoom 上限，一步到位；
-    // 事後修正會造成「先放大過頭再縮回」的兩段動作（豎屏窄框時特別明顯）
-    if (opts?.maxZoom !== undefined) {
-      this.map.setOptions({ maxZoom: opts.maxZoom });
-      google.maps.event.addListenerOnce(this.map, 'idle', () => {
-        this.map?.setOptions({ maxZoom: undefined }); // 恢復使用者自由縮放
-      });
-    }
-    this.map.fitBounds(
-      new google.maps.LatLngBounds({ lat: b.south, lng: b.west }, { lat: b.north, lng: b.east }),
-      opts?.padding
-    );
+    const { center, zoom } = this.boundsToCamera(b, opts?.padding ?? 0);
+    const clamped = opts?.maxZoom !== undefined ? Math.min(zoom, opts.maxZoom) : zoom;
+    this.animateCamera(center, clamped);
   }
 
   onMarkerClick(cb: (stationId: string) => void): void {

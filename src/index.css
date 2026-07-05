@@ -260,6 +260,22 @@ button {
   }
 }
 
+/* marker 命中區：透明外框把可觸控面積標準化到 --hit（≥44px，Apple HIG）。
+   pin 以尖端錨於底部中央、視覺不變，四周透明區擴大可點範圍（尤其小尺寸加盟 pin）。 */
+.mk {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: var(--hit, 44px);
+  height: var(--hit, 44px);
+  /* 命中區以 pin 尖端為基準置中；不裁切 pin 溢出部分 */
+  overflow: visible;
+}
+
+.mk > * {
+  pointer-events: none; /* 點擊由外層 .mk 命中區承接，避免小 pin 才可點 */
+}
+
 /* 使用者藍點：白圈藍芯 + 呼吸光暈（原生 Google Maps 風格） */
 .user-dot {
   width: 18px;
