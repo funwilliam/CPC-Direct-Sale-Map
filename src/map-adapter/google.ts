@@ -81,30 +81,19 @@ export class GoogleMapAdapter implements MapAdapter {
     return mk;
   }
 
-  /** 單段補間（promise 在結束或被新動畫取代時 resolve） */
-  private tween(
-    from: { lat: number; lng: number; zoom: number },
-    to: { lat: number; lng: number; zoom: number },
-    durationMs: number,
-    ease: (t: number) => number
-  ): Promise<boolean> {
+  /** 等原生動畫結束（idle），帶 timeout 保險避免卡住 */
+  private waitIdle(timeoutMs = 700): Promise<void> {
     const map = this.map;
-    if (!map) return Promise.resolve(false);
-    const id = this.animId;
-    const start = performance.now();
+    if (!map) return Promise.resolve();
     return new Promise((resolve) => {
-      const frame = (now: number) => {
-        if (id !== this.animId || this.map !== map) return resolve(false); // 被取代/卸載
-        const t = Math.min(1, (now - start) / durationMs);
-        const k = ease(t);
-        map.moveCamera({
-          center: { lat: from.lat + (to.lat - from.lat) * k, lng: from.lng + (to.lng - from.lng) * k },
-          zoom: from.zoom + (to.zoom - from.zoom) * k,
-        });
-        if (t < 1) requestAnimationFrame(frame);
-        else resolve(true);
-      };
-      requestAnimationFrame(frame);
+      const timer = setTimeout(() => {
+        google.maps.event.removeListener(listener);
+        resolve();
+      }, timeoutMs);
+      const listener = google.maps.event.addListenerOnce(map, 'idle', () => {
+        clearTimeout(timer);
+        resolve();
+      });
     });
   }
 
@@ -115,12 +104,14 @@ export class GoogleMapAdapter implements MapAdapter {
   }
 
   /**
-   * 相機移動策略（UX：移動方向感一致）
+   * 相機移動策略（UX：方向感一致、流暢度 = 手勢級）。
+   * 全部使用地圖「原生」動畫（panTo/setZoom 與手指拖曳同一套 GPU 引擎），
+   * 不自行逐幀插值（JS 側 rAF+moveCamera 逐幀塞分數縮放即先前卡頓來源）。
    * - 極短：直接到位。
-   * - 短距離（≤1.5 視窗）：全程平滑補間。
-   * - 長距離：三段式——朝目標方向小平移（建立方向感）→ 瞬移到目標前緣 → 小平移滑入。
+   * - 短距離（≤0.9 視窗）：原生 panTo；如需變焦，pan 完再原生 setZoom。
+   * - 長距離：三段式——原生小平移（建方向感）→ 瞬移到目標前緣 → 原生小平移滑入。
    */
-  private async animateCamera(center: LatLng, zoom: number, durationMs = 500): Promise<void> {
+  private async animateCamera(center: LatLng, zoom: number): Promise<void> {
     const map = this.map;
     if (!map) return;
     const c0 = map.getCenter();
@@ -129,46 +120,48 @@ export class GoogleMapAdapter implements MapAdapter {
       map.moveCamera({ center, zoom });
       return;
     }
+    const seq = ++this.animId;
     const sLat = c0.lat();
     const sLng = c0.lng();
-    const id = ++this.animId;
+    const dLat = center.lat - sLat;
+    const dLng = center.lng - sLng;
+    const dist = Math.hypot(dLat, dLng);
+    const dz = zoom - z0;
 
     // 位移與縮放差都極小 → 不值得動畫
-    if (Math.abs(zoom - z0) < 0.05 && Math.abs(center.lat - sLat) < 1e-4 && Math.abs(center.lng - sLng) < 1e-4) {
+    if (Math.abs(dz) < 0.05 && dist < 1e-4) {
       map.moveCamera({ center, zoom });
       return;
     }
 
-    const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-    const dLat = center.lat - sLat;
-    const dLng = center.lng - sLng;
-    const dist = Math.hypot(dLat, dLng);
     const spans = dist / this.viewportLngSpan(Math.min(z0, zoom));
 
-    if (spans <= 1.5 && Math.abs(zoom - z0) <= 3) {
-      await this.tween({ lat: sLat, lng: sLng, zoom: z0 }, { ...center, zoom }, durationMs, easeInOut);
+    if (spans <= 0.9) {
+      map.panTo(center); // 原生平滑（此距離內保證動畫，與手勢同引擎）
+      if (Math.abs(dz) >= 0.05) {
+        await this.waitIdle();
+        if (seq !== this.animId || this.map !== map) return;
+        map.setZoom(zoom); // 原生縮放動畫
+      }
       return;
     }
 
-    // 三段式長距離
+    // 長距離三段式（pan 皆原生；縮放只在中段瞬移時切換，不做動畫縮放）
     const ux = dLat / (dist || 1);
     const uy = dLng / (dist || 1);
-    const stepOut = 0.35 * this.viewportLngSpan(z0); // 出發端：朝目標小平移 0.35 視窗
-    const stepIn = 0.35 * this.viewportLngSpan(zoom); // 到達端：由前緣滑入 0.35 視窗
-    const easeIn = (t: number) => t * t;
-    const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
+    const stepOut = 0.35 * this.viewportLngSpan(z0);
+    map.panTo({ lat: sLat + ux * stepOut, lng: sLng + uy * stepOut });
+    await this.waitIdle();
+    if (seq !== this.animId || this.map !== map) return;
 
-    const ok = await this.tween(
-      { lat: sLat, lng: sLng, zoom: z0 },
-      { lat: sLat + ux * stepOut, lng: sLng + uy * stepOut, zoom: z0 },
-      160,
-      easeIn
-    );
-    if (!ok || id !== this.animId || this.map !== map) return;
-    const preLat = center.lat - ux * stepIn;
-    const preLng = center.lng - uy * stepIn;
-    map.moveCamera({ center: { lat: preLat, lng: preLng }, zoom }); // 中段瞬移
-    await this.tween({ lat: preLat, lng: preLng, zoom }, { ...center, zoom }, 280, easeOut);
+    const stepIn = 0.35 * this.viewportLngSpan(zoom);
+    map.moveCamera({
+      center: { lat: center.lat - ux * stepIn, lng: center.lng - uy * stepIn },
+      zoom,
+    }); // 中段瞬移到目標前緣
+    await this.waitIdle(250);
+    if (seq !== this.animId || this.map !== map) return;
+    map.panTo(center); // 原生滑入定點
   }
 
   /** bounds + padding → 相機中心與縮放（標準 mercator fit 公式，供平滑動畫用） */
