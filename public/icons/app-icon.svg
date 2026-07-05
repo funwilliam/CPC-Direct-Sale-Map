@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 順路加油 app icon｜概念：順路(道路) + 找站(定位針) + 加油(油滴)
+       Apple 風格：全出血微漸層底、單一白色圖形、無文字、幾何極簡 -->
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0" stop-color="#3f7dee"/>
+      <stop offset="1" stop-color="#173f9f"/>
+    </linearGradient>
+    <radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="150" cy="90" r="460">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- 順路：低調弧形道路（寬帶 + 中線虛線），由左下通往針尖 -->
+  <path d="M-30 470 C 120 448, 208 380, 251 262" stroke="#ffffff" stroke-opacity="0.12"
+        stroke-width="64" fill="none" stroke-linecap="round"/>
+  <path d="M-30 470 C 120 448, 208 380, 251 262" stroke="#ffffff" stroke-opacity="0.34"
+        stroke-width="7" stroke-dasharray="1 30" fill="none" stroke-linecap="round"/>
+
+  <!-- 定位針（白，內圈以底漸層鏤空） -->
+  <path fill="#ffffff" d="M256 92c-66.8 0-121 54.2-121 121 0 46.6 30.2 96.9 60.1 136.6
+       14.9 19.8 29.8 36.4 41 48.2 5.6 5.9 10.3 10.6 13.6 13.8 1.6 1.6 2.9 2.8 3.8 3.6
+       l2.5 2.3 2.5-2.3c.9-.8 2.2-2 3.8-3.6 3.3-3.2 8-7.9 13.6-13.8 11.2-11.8 26.1-28.4
+       41-48.2C346.8 309.9 377 259.6 377 213c0-66.8-54.2-121-121-121Z"/>
+  <circle cx="256" cy="213" r="64" fill="url(#bg)"/>
+
+  <!-- 加油：油滴（白，置於針心） -->
+  <path fill="#ffffff" d="M256 172c14.8 21.5 30 39.9 30 57.8 0 17.5-13.4 30.2-30 30.2
+       s-30-12.7-30-30.2c0-17.9 15.2-36.3 30-57.8Z"/>
+
+  <!-- Apple 式頂部柔光 -->
+  <rect width="512" height="512" fill="url(#glow)"/>
+</svg>

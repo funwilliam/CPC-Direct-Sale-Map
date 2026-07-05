@@ -788,6 +788,22 @@ button {
   color: var(--ink-3);
 }
 
+/* 無障礙：使用者要求減少動態時停用裝飾性動畫 */
+@media (prefers-reduced-motion: reduce) {
+  .user-dot::before,
+  .splash-spinner,
+  .locate-btn.locating svg {
+    animation: none;
+  }
+  .map-splash,
+  .station-card,
+  .search-sheet,
+  .install-banner {
+    animation: none;
+    transition: none;
+  }
+}
+
 /* ---- 走勢圖 ---- */
 .chart-block {
   background: var(--surface);

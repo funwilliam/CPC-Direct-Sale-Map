@@ -1,5 +1,6 @@
 import type { CurrentPriceFile, PriceHistoryFile } from '../../types/station.ts';
 import { FUEL_LABELS } from '../../types/station.ts';
+import { fmtLocal } from '../../lib/format.ts';
 import PriceChart from './PriceChart.tsx';
 
 interface Props {
@@ -74,7 +75,11 @@ export default function PricePage({ price, history }: Props) {
         </div>
       )}
 
-      <p className="attribution">資料來源：台灣中油／經濟部能源署／政府資料開放平臺（非官方應用）</p>
+      <p className="attribution">
+        資料更新於 {fmtLocal(price.generatedAt)}・每週一自動更新
+        <br />
+        資料來源：台灣中油／經濟部能源署／政府資料開放平臺（非官方應用）
+      </p>
     </div>
   );
 }

@@ -18,7 +18,7 @@
 ┌─ GitHub Pages ───┴───────────────────────────────┐
 │ Vite + React + TS PWA                            │
 │   features/map ── map-adapter（Google Maps 實作） │
-│   features/list ─ fuse.js 模糊搜尋                │
+│   features/search ─ 地圖搜尋覆層(fuse.js)         │
 │   features/price ─ 牌價卡 + 走勢圖                │
 │   lib/ 純函式（auto-fit、距離、篩選）              │
 └──────────────────────────────────────────────────┘
@@ -35,7 +35,7 @@ Vite + React + TypeScript + vite-plugin-pwa｜地圖 Google Maps JS API（ADR-00
 | `scripts/` | 抓取、驗證、join、產出 `public/data/*.json` | 不 import `src/` |
 | `scripts/schema/` | zod schema = 資料契約，前後共用 | — |
 | `src/map-adapter/` | 地圖供應商抽象：`setStations`/`onMarkerClick`/`fitBounds`/`onViewportChange`/`setLayerVisibility` | 介面不得洩漏 Google Maps 型別 |
-| `src/features/*` | UI 垂直切片（map/list/price/station-card） | 不直接呼叫 Google Maps API |
+| `src/features/*` | UI 垂直切片（map/search/price/station-card/install/debug） | 不直接呼叫 Google Maps API |
 | `src/lib/` | 純函式，無 DOM/框架依賴 | — |
 
 ## 資料流
@@ -48,7 +48,7 @@ Vite + React + TypeScript + vite-plugin-pwa｜地圖 Google Maps JS API（ADR-00
 
 - App shell：precache（build hash 版本控制）。
 - `data/*.json`：stale-while-revalidate（先渲染快取，背景更新後提示）。
-- Google Maps 圖磚：不快取（ToS）；離線時地圖區顯示不可用提示，清單/油價頁正常。
+- Google Maps 圖磚：不快取（ToS）；離線時地圖區顯示不可用提示，搜尋/油價功能正常。
 
 ## 防超量計費（Google Maps）
 

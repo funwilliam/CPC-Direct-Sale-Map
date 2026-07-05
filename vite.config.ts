@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -8,6 +8,9 @@ export default defineConfig({
   define: {
     // build 時間（epoch ms）：診斷面板以「瀏覽器當地時區」格式化顯示
     __BUILD_TS__: Date.now(),
+  },
+  test: {
+    include: ['tests/unit/**/*.test.ts'], // e2e 歸 Playwright（ADR-008）
   },
   plugins: [
     react(),
