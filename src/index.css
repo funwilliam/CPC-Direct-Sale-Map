@@ -283,7 +283,8 @@ button {
   padding: 0.6rem 0.9rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
-  font-size: 0.95rem;
+  /* 必須 ≥16px：iOS 聚焦 <16px 輸入框會自動放大整頁（造成 x 溢出與位移殘留） */
+  font-size: 16px;
   background: var(--bg);
   outline-color: var(--brand);
 }

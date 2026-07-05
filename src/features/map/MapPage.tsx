@@ -119,9 +119,11 @@ export default function MapPage({
     locate();
   }, [ready, stations, autoFitDone, onAutoFitDone, locate]);
 
-  // 從清單「在地圖顯示」進來時置中
+  // 選中站：紅色高亮 + 置中（取消選取時還原）
   useEffect(() => {
-    if (ready && selected) adapterRef.current?.panTo({ lat: selected.lat, lng: selected.lng }, 15);
+    if (!ready) return;
+    adapterRef.current?.setSelected(selected?.id ?? null);
+    if (selected) adapterRef.current?.panTo({ lat: selected.lat, lng: selected.lng }, 15);
   }, [ready, selected]);
 
   return (

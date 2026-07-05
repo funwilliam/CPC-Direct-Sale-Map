@@ -16,6 +16,8 @@ export class GoogleMapAdapter implements MapAdapter {
   private franchiseStations: Station[] = [];
   /** 加盟 marker 惰性建立池（只為進過視窗的站建 DOM） */
   private franchisePool = new Map<string, google.maps.marker.AdvancedMarkerElement>();
+  private directPool = new Map<string, google.maps.marker.AdvancedMarkerElement>();
+  private selectedId: string | null = null;
   private visibleFranchise = new Set<string>();
   private userMarker: google.maps.marker.AdvancedMarkerElement | null = null;
   private markerClickCb: ((id: string) => void) | null = null;
@@ -79,6 +81,48 @@ export class GoogleMapAdapter implements MapAdapter {
     mk.className = direct ? 'mk mk-direct' : 'mk mk-franchise';
     mk.appendChild(pinEl);
     return mk;
+  }
+
+  /** 產生 marker 內容：直營藍 / 加盟灰 / 選中紅（放大） */
+  private makeContent(kind: 'direct' | 'franchise' | 'selected'): HTMLElement {
+    const { PinElement } = this.markerLib!;
+    const cfg =
+      kind === 'selected'
+        ? { background: '#d92d20', borderColor: '#a92318', glyphColor: '#ffffff', scale: 1.25 }
+        : kind === 'direct'
+          ? { background: '#1a56db', borderColor: '#153e9e', glyphColor: '#ffffff' }
+          : { background: '#9ca3af', borderColor: '#6b7280', glyphColor: '#e5e7eb', scale: 0.62 };
+    const pin = new PinElement(cfg);
+    if (kind === 'franchise') pin.element.style.opacity = '0.55';
+    return this.wrapPin(pin.element, kind !== 'franchise');
+  }
+
+  /** 高亮選中站：紅色放大 pin + 置頂；還原前一個 */
+  setSelected(id: string | null): void {
+    if (id === this.selectedId || !this.markerLib) return;
+    const prev = this.selectedId;
+    this.selectedId = id;
+    if (prev) {
+      const d = this.directPool.get(prev);
+      if (d) {
+        d.content = this.makeContent('direct');
+        d.zIndex = null;
+      } else {
+        const f = this.franchisePool.get(prev);
+        if (f) {
+          f.content = this.makeContent('franchise');
+          f.zIndex = null;
+        }
+      }
+    }
+    if (id) {
+      const m = this.directPool.get(id) ?? this.franchisePool.get(id);
+      if (m) {
+        m.content = this.makeContent('selected');
+        m.zIndex = 1200;
+      }
+      // 加盟站尚未進池時：cullFranchise 建立當下會依 selectedId 直接給紅色
+    }
   }
 
   /** 等原生動畫結束（idle），帶 timeout 保險避免卡住 */
@@ -190,35 +234,34 @@ export class GoogleMapAdapter implements MapAdapter {
     this.clusterer?.clearMarkers();
     this.clusterer = null;
     this.franchisePool.clear();
+    this.directPool.clear();
     this.visibleFranchise.clear();
+    this.selectedId = null;
     this.userMarker = null;
     this.map = null;
   }
 
   setStations(stations: Station[]): void {
     if (!this.map || !this.markerLib) return;
-    const { AdvancedMarkerElement, PinElement } = this.markerLib;
+    const { AdvancedMarkerElement } = this.markerLib;
 
     this.clusterer?.clearMarkers();
     for (const m of this.franchisePool.values()) m.map = null;
     this.franchisePool.clear();
+    this.directPool.clear();
     this.visibleFranchise.clear();
 
     // 直營層：全部交給 clusterer（GPU 端聚合，DOM 數量 = 叢集數）
     const directMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
     for (const s of stations) {
       if (!s.isDirect) continue;
-      const pin = new PinElement({
-        background: '#1a56db',
-        borderColor: '#153e9e',
-        glyphColor: '#ffffff',
-      });
       const marker = new AdvancedMarkerElement({
         position: { lat: s.lat, lng: s.lng },
-        content: this.wrapPin(pin.element, true),
+        content: this.makeContent(s.id === this.selectedId ? 'selected' : 'direct'),
         title: s.name,
       });
       marker.addListener('click', () => this.markerClickCb?.(s.id));
+      this.directPool.set(s.id, marker);
       directMarkers.push(marker);
     }
     this.clusterer = new MarkerClusterer({ map: this.map, markers: directMarkers });
@@ -259,19 +302,13 @@ export class GoogleMapAdapter implements MapAdapter {
       if (!marker) {
         const s = this.franchiseStations.find((x) => x.id === id);
         if (!s) continue;
-        const { AdvancedMarkerElement, PinElement } = this.markerLib;
-        const pin = new PinElement({
-          background: '#9ca3af',
-          borderColor: '#6b7280',
-          glyphColor: '#e5e7eb',
-          scale: 0.62,
-        });
-        pin.element.style.opacity = '0.55';
+        const { AdvancedMarkerElement } = this.markerLib;
         marker = new AdvancedMarkerElement({
           position: { lat: s.lat, lng: s.lng },
-          content: this.wrapPin(pin.element, false),
+          content: this.makeContent(id === this.selectedId ? 'selected' : 'franchise'),
           title: s.name,
         });
+        if (id === this.selectedId) marker.zIndex = 1200;
         marker.addListener('click', () => this.markerClickCb?.(id));
         this.franchisePool.set(id, marker);
       }
