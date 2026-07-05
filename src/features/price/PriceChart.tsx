@@ -18,7 +18,7 @@ const RANGES = [
 ] as const;
 
 const H = 260;
-const PAD = { top: 12, right: 78, bottom: 26, left: 34 };
+const PAD = { top: 12, right: 92, bottom: 26, left: 34 };
 
 interface Props {
   entries: PriceEntry[]; // 依 date 升冪
@@ -148,15 +148,35 @@ export default function PriceChart({ entries }: Props) {
                 strokeLinejoin="round"
               />
             ))}
-            {/* 右端直接標籤（relief 規則：文字用 ink，色點帶身分） */}
-            {SERIES.map((s, i) => (
-              <g key={s.key}>
-                <circle cx={width - PAD.right + 10} cy={labelYs[i]} r="4" fill={s.color} />
-                <text x={width - PAD.right + 18} y={labelYs[i] + 3.5} className="label-text">
-                  {s.label} {data[data.length - 1][s.key].toFixed(1)}
-                </text>
-              </g>
-            ))}
+            {/* 右端直接標籤：油品名 + 價格方框（銳角細框，與名稱分隔避免黏連） */}
+            {SERIES.map((s, i) => {
+              const x0 = width - PAD.right + 8;
+              const nameW = s.label === '柴油' ? 26 : 15;
+              const priceStr = data[data.length - 1][s.key].toFixed(1);
+              const boxW = priceStr.length * 6.4 + 10;
+              const boxX = x0 + 8 + nameW + 4;
+              return (
+                <g key={s.key}>
+                  <circle cx={x0} cy={labelYs[i]} r="4" fill={s.color} />
+                  <text x={x0 + 8} y={labelYs[i] + 3.5} className="label-text">
+                    {s.label}
+                  </text>
+                  <rect
+                    x={boxX}
+                    y={labelYs[i] - 8.5}
+                    width={boxW}
+                    height={17}
+                    rx="1"
+                    fill="var(--surface)"
+                    stroke={s.color}
+                    strokeWidth="1"
+                  />
+                  <text x={boxX + boxW / 2} y={labelYs[i] + 3.5} className="label-text" textAnchor="middle">
+                    {priceStr}
+                  </text>
+                </g>
+              );
+            })}
             {/* crosshair */}
             {hoverEntry && (
               <g>

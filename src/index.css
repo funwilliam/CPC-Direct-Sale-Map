@@ -49,6 +49,16 @@ body {
   background: var(--surface);
   -webkit-font-smoothing: antialiased;
   overflow: hidden; /* app 殼不捲動，杜絕 iOS 橡皮筋露底 */
+  /* 全域禁文字選取（誤觸長按反白影響視覺）；僅搜尋輸入框開放 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 button {
@@ -155,19 +165,6 @@ button {
   transform: scale(0.97);
 }
 
-/* 診斷模式（?debug=1）：讓標籤與 tab bar 邊界醒目，實機截圖定位覆蓋問題 */
-.app.debug .tab-bar {
-  outline: 3px solid magenta;
-}
-.app.debug .tab-label {
-  background: yellow;
-  color: red;
-  outline: 2px solid red;
-}
-.app.debug .tab-bar button {
-  outline: 1px dashed blue;
-}
-
 .error {
   color: var(--red);
 }
@@ -178,6 +175,13 @@ button {
   text-align: center;
   padding: 0.75rem 1rem 1rem;
   margin: 0;
+  line-height: 1.7;
+}
+
+.attribution-left {
+  text-align: left;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* ---- 地圖頁 ---- */
@@ -792,6 +796,143 @@ button {
 .price-note {
   font-size: 0.75rem;
   color: var(--ink-3);
+}
+
+/* ---- 設定頁 ---- */
+.settings-page h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1.15rem;
+}
+
+.set-group {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-1);
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.set-group h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.92rem;
+}
+
+.seg {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 3px;
+  gap: 3px;
+}
+
+.seg button {
+  flex: 1;
+  border: 0;
+  background: none;
+  border-radius: calc(var(--radius-m) - 3px);
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.seg button.seg-on {
+  background: var(--surface);
+  color: var(--brand);
+  font-weight: 700;
+  box-shadow: var(--shadow-1);
+}
+
+.set-hint {
+  font-size: 0.76rem;
+  color: var(--ink-3);
+  line-height: 1.55;
+  margin: 0.55rem 0 0;
+}
+
+.set-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.88rem;
+  padding: 0.3rem 0;
+  color: var(--ink-2);
+}
+
+.set-row b {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.set-btn:active {
+  background: var(--brand-tint);
+}
+
+.set-btn:disabled {
+  color: var(--ink-3);
+}
+
+.set-details {
+  margin-top: 0.7rem;
+}
+
+.set-details summary {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  padding: 0.3rem 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.set-log {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  font-size: 0.76rem;
+  color: var(--ink-2);
+}
+
+.set-log li {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.set-log li span {
+  display: block;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.set-legal {
+  font-size: 0.76rem;
+  color: var(--ink-2);
+  line-height: 1.7;
+  margin: 0;
+  word-break: break-all;
+}
+
+.strip-settings {
+  background: var(--bg); /* 延續設定頁底色 */
 }
 
 /* 無障礙：使用者要求減少動態時停用裝飾性動畫 */

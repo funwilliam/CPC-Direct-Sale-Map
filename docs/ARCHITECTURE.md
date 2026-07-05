@@ -47,7 +47,7 @@ Vite + React + TypeScript + vite-plugin-pwa｜地圖 Google Maps JS API（ADR-00
 ## PWA 策略
 
 - App shell：precache（build hash 版本控制）。
-- `data/*.json`：stale-while-revalidate（先渲染快取，背景更新後提示）。
+- `data/*.json`：app 層 Cache API 離線優先（ADR-009）——一律讀本機，僅當同步時間早於最近一次排程部署（週日 19:00 UTC）才背景重抓，失敗無感。
 - Google Maps 圖磚：不快取（ToS）；離線時地圖區顯示不可用提示，搜尋/油價功能正常。
 
 ## 防超量計費（Google Maps）

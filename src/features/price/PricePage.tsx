@@ -75,10 +75,10 @@ export default function PricePage({ price, history }: Props) {
         </div>
       )}
 
-      <p className="attribution">
+      <p className="attribution attribution-left">
         資料更新於 {fmtLocal(price.generatedAt)}・每週一自動更新
         <br />
-        資料來源：台灣中油／經濟部能源署／政府資料開放平臺（非官方應用）
+        資料來源：台灣中油／經濟部能源署／政府資料開放平臺
       </p>
     </div>
   );
