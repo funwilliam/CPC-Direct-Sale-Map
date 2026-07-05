@@ -45,9 +45,9 @@ export class GoogleMapAdapter implements MapAdapter {
     this.map = new Map(el, {
       center: opts.center,
       zoom: opts.zoom,
-      // 正式向量 Map ID（GCP 建立後經環境變數注入）；未設定時退回 DEMO_MAP_ID。
+      // 正式向量 Map ID（非機密，本就出現在頁面原始碼；環境變數可覆寫）。
       // 向量模式縮放為 GPU 平滑縮放既有幾何，不會出現灰色待載圖磚塊。
-      mapId: (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) || 'DEMO_MAP_ID',
+      mapId: (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) || '512312ef3444ebee99784cc2',
       // 圖磚載入前的底色改接近地圖陸地色（預設深灰塊很搶眼）
       backgroundColor: '#f2f0ed',
       disableDefaultUI: true,
