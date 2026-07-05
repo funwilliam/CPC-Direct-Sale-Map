@@ -444,6 +444,12 @@ button {
   animation: pulse 2.4s var(--ease) infinite;
 }
 
+/* 地圖拖曳/縮放期間暫停呼吸動畫，把合成資源讓給地圖本體 */
+.map-moving .user-dot::before {
+  animation-play-state: paused;
+  opacity: 0;
+}
+
 @keyframes pulse {
   0% {
     transform: scale(0.55);

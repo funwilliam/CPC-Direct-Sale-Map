@@ -6,8 +6,8 @@ import type { Station } from '../types/station.ts';
 
 let optionsSet = false;
 
-/** 視窗內同時渲染的加盟 marker 上限（ADR-005 效能預算；v1.2 300→150 減輕互動負載） */
-const FRANCHISE_RENDER_CAP = 150;
+/** 視窗內同時渲染的加盟 marker 上限（ADR-005；向量模式 DOM 疊加成本高，150→80） */
+const FRANCHISE_RENDER_CAP = 80;
 /** idle 時每幀最多掛載的加盟 marker 數（分批進場，避免手勢結束瞬間頓挫） */
 const FRANCHISE_ADD_BATCH = 50;
 
@@ -71,6 +71,11 @@ export class GoogleMapAdapter implements MapAdapter {
     // 視窗裁剪：地圖靜止時才增減加盟 marker（拖曳中不動 DOM，保持流暢）
     this.map.addListener('idle', () => this.cullFranchise());
     this.map.addListener('click', () => this.mapClickCb?.());
+    // 互動期間暫停疊加層的裝飾動畫（無限 CSS 動畫疊在 WebGL 上是持續合成負擔）
+    const moving = (on: boolean) => el.classList.toggle('map-moving', on);
+    this.map.addListener('dragstart', () => moving(true));
+    this.map.addListener('zoom_changed', () => moving(true));
+    this.map.addListener('idle', () => moving(false));
     // 診斷：實際渲染模式（VECTOR=GPU 向量 / RASTER=點陣回退會卡）→ debug 面板讀取
     const stampRender = () => {
       el.dataset.render = String(this.map?.getRenderingType() ?? 'unknown');

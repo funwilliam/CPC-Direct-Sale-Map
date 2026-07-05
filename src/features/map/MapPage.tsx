@@ -7,7 +7,7 @@ import type { Station } from '../../types/station.ts';
 import StationCard from '../station-card/StationCard.tsx';
 import SearchOverlay from '../search/SearchOverlay.tsx';
 
-const FRANCHISE_MIN_ZOOM = 12; // spec/map.md §圖層規則
+const FRANCHISE_MIN_ZOOM = 13; // spec/map.md §圖層規則（向量模式減負，12→13）
 
 interface Props {
   stations: Station[];
