@@ -45,9 +45,13 @@ export class GoogleMapAdapter implements MapAdapter {
     this.map = new Map(el, {
       center: opts.center,
       zoom: opts.zoom,
-      // 正式向量 Map ID（非機密，本就出現在頁面原始碼；環境變數可覆寫）。
-      // 向量模式縮放為 GPU 平滑縮放既有幾何，不會出現灰色待載圖磚塊。
-      mapId: (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) || '512312ef3444ebee99784cc2',
+      // 渲染引擎二選一（硬取捨，diag 面板可切換，存 localStorage）：
+      // 向量＝縮放絲滑無灰磚、但部分機型平移有圖磚解碼頓挫；點陣＝平移絲滑、縮放有灰磚。
+      // DEMO_MAP_ID 實證為點陣；正式 Map ID 為向量（非機密；環境變數可覆寫）。
+      mapId:
+        localStorage.getItem('mapRender') === 'raster'
+          ? 'DEMO_MAP_ID'
+          : (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) || '512312ef3444ebee99784cc2',
       // 圖磚載入前的底色改接近地圖陸地色（預設深灰塊很搶眼）
       backgroundColor: '#f2f0ed',
       disableDefaultUI: true,

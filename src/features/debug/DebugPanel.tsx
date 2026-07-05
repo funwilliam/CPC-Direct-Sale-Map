@@ -60,6 +60,12 @@ export default function DebugPanel() {
     };
   }, []);
 
+  const pref = typeof localStorage !== 'undefined' && localStorage.getItem('mapRender') === 'raster' ? 'raster' : 'vector';
+  const togglePref = () => {
+    localStorage.setItem('mapRender', pref === 'raster' ? 'vector' : 'raster');
+    location.reload();
+  };
+
   return (
     <div
       style={{
@@ -77,6 +83,22 @@ export default function DebugPanel() {
       }}
     >
       {lines.join('\n')}
+      {'\n'}
+      <button
+        onClick={togglePref}
+        style={{
+          pointerEvents: 'auto',
+          marginTop: 4,
+          padding: '4px 10px',
+          font: 'inherit',
+          background: '#0f0',
+          color: '#000',
+          border: 0,
+          borderRadius: 4,
+        }}
+      >
+        引擎偏好：{pref === 'raster' ? '點陣' : '向量'} → 切換為{pref === 'raster' ? '向量' : '點陣'}（會重載）
+      </button>
     </div>
   );
 }
