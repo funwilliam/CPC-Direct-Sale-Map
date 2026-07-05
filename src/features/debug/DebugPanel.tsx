@@ -38,6 +38,7 @@ export default function DebugPanel() {
         `BUILD ${fmtLocal(__BUILD_TS__)}`,
         `standalone=${standalone}`,
         `Maps載入(本機 ${usage.month}): ${usage.count} / 免費 ${FREE_TIER_MONTHLY}`,
+        `map渲染=${(document.querySelector('.map-container') as HTMLElement | null)?.dataset.render ?? 'n/a'}（RASTER=點陣回退會卡）`,
         `  ↑本裝置估算，非帳號總量（帳號級需後端查 Cloud Monitoring）`,
         `innerH=${window.innerHeight} visualVP=${Math.round(window.visualViewport?.height ?? 0)}`,
         `clientH=${document.documentElement.clientHeight}`,

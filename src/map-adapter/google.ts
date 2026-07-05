@@ -6,8 +6,10 @@ import type { Station } from '../types/station.ts';
 
 let optionsSet = false;
 
-/** 視窗內同時渲染的加盟 marker 上限（ADR-005 效能預算） */
-const FRANCHISE_RENDER_CAP = 300;
+/** 視窗內同時渲染的加盟 marker 上限（ADR-005 效能預算；v1.2 300→150 減輕互動負載） */
+const FRANCHISE_RENDER_CAP = 150;
+/** idle 時每幀最多掛載的加盟 marker 數（分批進場，避免手勢結束瞬間頓挫） */
+const FRANCHISE_ADD_BATCH = 50;
 
 export class GoogleMapAdapter implements MapAdapter {
   private map: google.maps.Map | null = null;
@@ -65,6 +67,12 @@ export class GoogleMapAdapter implements MapAdapter {
     // 視窗裁剪：地圖靜止時才增減加盟 marker（拖曳中不動 DOM，保持流暢）
     this.map.addListener('idle', () => this.cullFranchise());
     this.map.addListener('click', () => this.mapClickCb?.());
+    // 診斷：實際渲染模式（VECTOR=GPU 向量 / RASTER=點陣回退會卡）→ debug 面板讀取
+    const stampRender = () => {
+      el.dataset.render = String(this.map?.getRenderingType() ?? 'unknown');
+    };
+    stampRender();
+    this.map.addListener('renderingtype_changed', stampRender);
   }
 
   /** marker 命中區大小隨縮放調整（低縮放密集→維持 44 下限；高縮放拉開→放大更好按） */
@@ -296,25 +304,36 @@ export class GoogleMapAdapter implements MapAdapter {
         this.visibleFranchise.delete(id);
       }
     }
+    // 分批進場：一次掛上百個 DOM marker 會在手勢結束瞬間掉幀
+    const toAdd: string[] = [];
     for (const id of wanted) {
-      if (this.visibleFranchise.has(id)) continue;
-      let marker = this.franchisePool.get(id);
-      if (!marker) {
-        const s = this.franchiseStations.find((x) => x.id === id);
-        if (!s) continue;
-        const { AdvancedMarkerElement } = this.markerLib;
-        marker = new AdvancedMarkerElement({
-          position: { lat: s.lat, lng: s.lng },
-          content: this.makeContent(id === this.selectedId ? 'selected' : 'franchise'),
-          title: s.name,
-        });
-        if (id === this.selectedId) marker.zIndex = 1200;
-        marker.addListener('click', () => this.markerClickCb?.(id));
-        this.franchisePool.set(id, marker);
-      }
-      marker.map = this.map;
-      this.visibleFranchise.add(id);
+      if (!this.visibleFranchise.has(id)) toAdd.push(id);
     }
+    const addChunk = (from: number) => {
+      if (!this.map || !this.markerLib) return;
+      const end = Math.min(from + FRANCHISE_ADD_BATCH, toAdd.length);
+      for (let i = from; i < end; i++) {
+        const id = toAdd[i];
+        let marker = this.franchisePool.get(id);
+        if (!marker) {
+          const s = this.franchiseStations.find((x) => x.id === id);
+          if (!s) continue;
+          const { AdvancedMarkerElement } = this.markerLib;
+          marker = new AdvancedMarkerElement({
+            position: { lat: s.lat, lng: s.lng },
+            content: this.makeContent(id === this.selectedId ? 'selected' : 'franchise'),
+            title: s.name,
+          });
+          if (id === this.selectedId) marker.zIndex = 1200;
+          marker.addListener('click', () => this.markerClickCb?.(id));
+          this.franchisePool.set(id, marker);
+        }
+        marker.map = this.map;
+        this.visibleFranchise.add(id);
+      }
+      if (end < toAdd.length) requestAnimationFrame(() => addChunk(end));
+    };
+    if (toAdd.length > 0) addChunk(0);
   }
 
   setUserLocation(pos: LatLng | null): void {
