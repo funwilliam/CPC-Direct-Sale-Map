@@ -5,8 +5,32 @@ import { fmtLocal } from '../../lib/format.ts';
 
 type Engine = 'raster' | 'vector';
 
+const APP_URL = 'https://funwilliam.github.io/CPC-Direct-Sale-Map/';
+const CONTACT_EMAIL = '44458534+funwilliam@users.noreply.github.com';
+
 function getEngine(): Engine {
   return localStorage.getItem('mapRender') === 'vector' ? 'vector' : 'raster'; // 預設點陣
+}
+
+/** 一鍵複製按鈕（與資訊卡 copy-btn 同視覺） */
+function CopyBtn({ value, label = '複製' }: { value: string; label?: string }) {
+  const [ok, setOk] = useState(false);
+  return (
+    <button
+      className="copy-btn"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setOk(true);
+          setTimeout(() => setOk(false), 1500);
+        } catch {
+          window.prompt('手動複製：', value);
+        }
+      }}
+    >
+      {ok ? '✓ 已複製' : label}
+    </button>
+  );
 }
 
 /** 設定頁（spec/settings.md）：地圖引擎、資料管理、關於與版權、診斷 */
@@ -113,19 +137,28 @@ export default function SettingsPage() {
           <span>本月地圖載入</span>
           <b>{usage.count} 次</b>
         </div>
+        <div className="set-row">
+          <span>專案網址</span>
+          <CopyBtn value={APP_URL} label="複製網址" />
+        </div>
+        <p className="set-hint set-url">{APP_URL}</p>
         <p className="set-hint">資料來源：台灣中油／經濟部能源署／政府資料開放平臺</p>
       </section>
 
       <section className="set-group">
         <h3>版權聲明</h3>
-        <p className="set-legal">
-          © 2026 funwilliam，保留一切權利。
-          <br />
-          本軟體禁止商業使用；未經授權，禁止修改本程式碼後重新發布（替換 Google Maps API
-          金鑰除外），並禁止以任何形式使用 AI 解析本程式碼。禁止以爬蟲、機器人或其他自動化程式存取本站頁面或資料端點（如需原始資料請向政府資料開放平臺取得）。允許自行部署，但必須完整保留本版權聲明與聯繫方式。
-          <br />
-          聯繫：44458534+funwilliam@users.noreply.github.com
-        </p>
+        <p className="set-legal">© 2026 funwilliam，保留一切權利。</p>
+        <ul className="set-legal-list">
+          <li>禁止商業使用。</li>
+          <li>禁止未經授權修改後重新發布（替換 Google Maps API 金鑰除外）。</li>
+          <li>禁止以任何形式使用 AI 解析本程式碼。</li>
+          <li>禁止以爬蟲或自動化程式存取本站與資料端點。</li>
+          <li>允許個人非商業用途自行部署，須完整保留本聲明與聯繫方式。</li>
+        </ul>
+        <div className="set-row">
+          <span>聯繫：funwilliam</span>
+          <CopyBtn value={CONTACT_EMAIL} label="複製 Email" />
+        </div>
       </section>
 
       <details className="set-details">

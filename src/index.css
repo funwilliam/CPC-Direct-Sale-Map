@@ -931,6 +931,19 @@ button {
   word-break: break-all;
 }
 
+.set-legal-list {
+  margin: 0.4rem 0 0.5rem;
+  padding-left: 1.1rem;
+  font-size: 0.76rem;
+  color: var(--ink-2);
+  line-height: 1.9;
+}
+
+.set-url {
+  word-break: break-all;
+  font-variant-numeric: tabular-nums;
+}
+
 .strip-settings {
   background: var(--bg); /* 延續設定頁底色 */
 }
