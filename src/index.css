@@ -422,14 +422,14 @@ button {
   pointer-events: none; /* 點擊由外層 .mk 命中區承接，避免小 pin 才可點 */
 }
 
-/* 使用者藍點：白圈藍芯 + 呼吸光暈（原生 Google Maps 風格） */
+/* 使用者藍點：白圈藍芯 + 呼吸光暈（尺寸對齊原生 Google Maps 定位點） */
 .user-dot {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #1a73e8;
-  border: 3px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  border: 3.5px solid #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
   position: relative;
   /* AdvancedMarker 錨點在底部中央，藍點要以中心對齊座標 */
   transform: translateY(50%);
@@ -438,7 +438,7 @@ button {
 .user-dot::before {
   content: '';
   position: absolute;
-  inset: -14px;
+  inset: -18px;
   border-radius: 50%;
   background: rgba(26, 115, 232, 0.18);
   animation: pulse 2.4s var(--ease) infinite;
