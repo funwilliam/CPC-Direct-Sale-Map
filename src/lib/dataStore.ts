@@ -85,6 +85,7 @@ export interface AppData {
 }
 
 export async function loadData(): Promise<AppData> {
+  void caches.delete('data-json'); // 清 v1.2 舊版 SW 遺留的孤兒快取（一次性回收）
   const cache = await caches.open(CACHE_NAME);
   let responses = await Promise.all(urls().map((u) => cache.match(u)));
 

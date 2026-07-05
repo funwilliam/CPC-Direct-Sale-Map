@@ -14,11 +14,43 @@ export function locationCacheKey(user: LatLng): string {
   return `${user.lat.toFixed(3)},${user.lng.toFixed(3)}`;
 }
 
-function readCache(key: string): Record<string, number> {
+// 車程快取集中於單一鍵，格網數設上限 FIFO 回收（無伺服器 app：可增長資料必設上限）
+const STORE_KEY = 'driveTimes';
+const MAX_GRIDS = 12;
+
+interface DriveStore {
+  order: string[];
+  grids: Record<string, Record<string, number>>;
+}
+
+function readStore(): DriveStore {
   try {
-    return JSON.parse(sessionStorage.getItem(`dt:${key}`) ?? '{}');
+    const s = JSON.parse(sessionStorage.getItem(STORE_KEY) ?? '') as DriveStore;
+    if (Array.isArray(s.order) && s.grids) return s;
   } catch {
-    return {};
+    /* ignore */
+  }
+  return { order: [], grids: {} };
+}
+
+function readCache(key: string): Record<string, number> {
+  return readStore().grids[key] ?? {};
+}
+
+function writeCache(key: string, data: Record<string, number>): void {
+  const s = readStore();
+  if (!s.grids[key]) {
+    s.order.push(key);
+    while (s.order.length > MAX_GRIDS) {
+      const oldest = s.order.shift();
+      if (oldest) delete s.grids[oldest];
+    }
+  }
+  s.grids[key] = data;
+  try {
+    sessionStorage.setItem(STORE_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore（隱私模式等） */
   }
 }
 
@@ -50,7 +82,7 @@ export async function getDriveMinutes(
         cached[missing[i].id] = Math.round(el.duration.value / 60);
       }
     });
-    sessionStorage.setItem(`dt:${key}`, JSON.stringify(cached));
+    writeCache(key, cached);
   } catch (e) {
     console.warn('Distance Matrix 不可用，退回直線距離排序', e);
   }
