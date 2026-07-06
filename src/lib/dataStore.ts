@@ -1,6 +1,6 @@
 // 資料存取層（ADR-009）：離線優先，平常不連回伺服器。
-// 首次使用下載入 Cache API；之後一律讀本機快取；距上次成功同步 >7 天才於開啟時
-// 背景嘗試更新，失敗不影響使用。事件寫入更新紀錄（設定頁可查）。
+// 首次使用下載入 Cache API；之後一律讀本機快取；快取資料的 generatedAt 早於
+// 最近一次排程部署時間才於開啟時背景更新，失敗不影響使用。事件寫入更新紀錄（設定頁可查）。
 import type { CurrentPriceFile, PriceHistoryFile, StationsFile } from '../types/station.ts';
 
 const CACHE_NAME = 'data-v1';
@@ -73,10 +73,13 @@ async function putAll(cache: Cache, responses: Response[]): Promise<void> {
   }
 }
 
-/** 伺服器有新一輪排程資料時背景更新（不阻塞、失敗無感） */
-async function maybeRefresh(cache: Cache): Promise<void> {
-  const last = getLastSync() ?? 0;
-  if (last >= lastScheduledUpdate()) return; // 已同步過最新排程資料 → 免連線
+/**
+ * 伺服器有新一輪排程資料時背景更新（不阻塞、失敗無感）。
+ * 新鮮度以「快取資料本身的 generatedAt」判斷，而非本機同步時間——
+ * 若部署延遲導致同步到舊資料，下次開啟仍會重試，直到拿到新一輪為止。
+ */
+async function maybeRefresh(cache: Cache, dataGeneratedAt: number): Promise<void> {
+  if (dataGeneratedAt >= lastScheduledUpdate()) return; // 快取已是最新排程資料 → 免連線
   try {
     const fresh = await fetchAllFresh();
     await putAll(cache, fresh);
@@ -108,19 +111,21 @@ export async function loadData(): Promise<AppData> {
   const cache = await caches.open(CACHE_NAME);
   let responses = await Promise.all(urls().map((u) => cache.match(u)));
 
+  let fromCache = true;
   if (responses.some((r) => !r)) {
     // 首次（或快取被清）：下載並入庫
     const fresh = await fetchAllFresh();
     await putAll(cache, fresh);
     logSync('資料下載完成');
     responses = fresh;
-  } else {
-    void maybeRefresh(cache); // 背景檢查週更，不等待
+    fromCache = false;
   }
 
   const [stations, price, history] = (await Promise.all(
     responses.map((r) => (r as Response).json())
   )) as [StationsFile, CurrentPriceFile, PriceHistoryFile];
+  // 週更檢查用油價檔（週更頻率最高者）的 generatedAt，背景執行不等待
+  if (fromCache) void maybeRefresh(cache, Date.parse(price.generatedAt) || 0);
   return { stations, price, history };
 }
 
