@@ -73,17 +73,34 @@ async function putAll(cache: Cache, responses: Response[]): Promise<void> {
   }
 }
 
+async function parseData(responses: Response[]): Promise<AppData> {
+  const [stations, price, history] = (await Promise.all(
+    responses.map((r) => r.json())
+  )) as [StationsFile, CurrentPriceFile, PriceHistoryFile];
+  return { stations, price, history };
+}
+
 /**
  * 伺服器有新一輪排程資料時背景更新（不阻塞、失敗無感）。
  * 新鮮度以「快取資料本身的 generatedAt」判斷，而非本機同步時間——
  * 若部署延遲導致同步到舊資料，下次開啟仍會重試，直到拿到新一輪為止。
+ * 真的抓到「更新的」資料時，透過 onFresh 交回 App 局部重繪（只換價格/歷史，地圖不動）。
  */
-async function maybeRefresh(cache: Cache, dataGeneratedAt: number): Promise<void> {
-  if (dataGeneratedAt >= lastScheduledUpdate()) return; // 快取已是最新排程資料 → 免連線
+async function maybeRefresh(
+  cache: Cache,
+  shownGeneratedAt: number,
+  onFresh?: (data: AppData) => void
+): Promise<void> {
+  if (shownGeneratedAt >= lastScheduledUpdate()) return; // 快取已是最新排程資料 → 免連線
   try {
     const fresh = await fetchAllFresh();
     await putAll(cache, fresh);
-    logSync('每週資料更新成功');
+    const data = await parseData(fresh);
+    // 僅在「確實比目前顯示的更新」時才重繪並記錄，避免部署延遲抓到同一份仍誤報更新
+    if ((Date.parse(data.price.generatedAt) || 0) > shownGeneratedAt) {
+      logSync('每週資料更新成功');
+      onFresh?.(data);
+    }
   } catch {
     logSync('資料更新失敗（沿用既有資料，不影響使用）');
   }
@@ -95,16 +112,10 @@ export interface AppData {
   history: PriceHistoryFile;
 }
 
-export async function loadData(): Promise<AppData> {
+export async function loadData(onFresh?: (data: AppData) => void): Promise<AppData> {
   // 非安全情境（非 https 測試）無 Cache API → 退回純網路載入，不快取
   if (!('caches' in globalThis)) {
-    const fresh = await fetchAllFresh();
-    const [stations, price, history] = (await Promise.all(fresh.map((r) => r.json()))) as [
-      StationsFile,
-      CurrentPriceFile,
-      PriceHistoryFile,
-    ];
-    return { stations, price, history };
+    return parseData(await fetchAllFresh());
   }
 
   void caches.delete('data-json').catch(() => {}); // 清 v1.2 舊版 SW 遺留的孤兒快取
@@ -121,12 +132,11 @@ export async function loadData(): Promise<AppData> {
     fromCache = false;
   }
 
-  const [stations, price, history] = (await Promise.all(
-    responses.map((r) => (r as Response).json())
-  )) as [StationsFile, CurrentPriceFile, PriceHistoryFile];
-  // 週更檢查用油價檔（週更頻率最高者）的 generatedAt，背景執行不等待
-  if (fromCache) void maybeRefresh(cache, Date.parse(price.generatedAt) || 0);
-  return { stations, price, history };
+  const data = await parseData(responses as Response[]);
+  // 週更檢查用油價檔（週更頻率最高者）的 generatedAt，背景執行不等待；
+  // 抓到新資料時 onFresh 回呼讓 App 局部重繪（不阻塞本次載入）
+  if (fromCache) void maybeRefresh(cache, Date.parse(data.price.generatedAt) || 0, onFresh);
+  return data;
 }
 
 /** 手動清除全部快取（資料 + PWA 殼）並重載 */

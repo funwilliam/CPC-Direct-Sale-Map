@@ -29,9 +29,13 @@ export default function App() {
   const [autoFitDone, setAutoFitDone] = useState(false);
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
 
-  // 離線優先資料層（ADR-009）：讀本機快取，>7 天才背景嘗試更新
+  // 離線優先資料層（ADR-009）：讀本機快取，資料過期才背景嘗試更新
   useEffect(() => {
-    loadData()
+    loadData((fresh) => {
+      // 背景週更完成：只換價格與歷史紀錄（油價頁局部重繪），地圖/站點維持不動避免抖動
+      setPrice(fresh.price);
+      setHistory(fresh.history);
+    })
       .then(({ stations: s, price: p, history: h }: { stations: StationsFile; price: CurrentPriceFile; history: PriceHistoryFile }) => {
         setStations(s.stations);
         setPrice(p);
