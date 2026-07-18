@@ -41,6 +41,9 @@ interface MapAdapter {
 - 使用者藍點：`.user-dot`（18px 藍芯+白圈+呼吸光暈，樣式見 spec/design.md）。
 - 藍點**持續跟隨**定位（App 層 watchPosition，移動 ≥20m 才更新）；相機不跟隨——
   相機移動僅發生在定位鈕與初次自動視野（不搶使用者視角）。
+- watchPosition 是**全 app 唯一定位來源**：watch 活躍時再呼叫 getCurrentPosition
+  會餓死逾時（Chromium 實測），locate 一律讀 watch 的最新位置。
+- 初次視野：等 watch 首個定位點，明確拒絕即刻 fallback、最多等 10s。
 
 ## 相機移動（v1.2，UX：方向感一致、手勢級流暢）
 

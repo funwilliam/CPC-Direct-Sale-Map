@@ -28,6 +28,7 @@ export default function App() {
   const [selected, setSelected] = useState<Station | null>(null);
   const [autoFitDone, setAutoFitDone] = useState(false);
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+  const [geoDenied, setGeoDenied] = useState(false);
 
   // 離線優先資料層（ADR-009）：讀本機快取，資料過期才背景嘗試更新
   useEffect(() => {
@@ -48,15 +49,21 @@ export default function App() {
   }, []);
 
   // 使用者定位：watchPosition 持續追蹤（藍點即時跟隨；相機只在定位鈕/初次視野時移動）。
-  // 移動 <20m 不更新 state，避免 GPS 抖動造成無意義重繪
+  // 全 app 唯一的定位來源——watch 活躍時再呼叫 getCurrentPosition 會餓死逾時（Chromium 實測），
+  // 因此 MapPage 的 locate 直接吃這條資料流。移動 <20m 不更新 state，避免 GPS 抖動無意義重繪
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setGeoDenied(true);
+      return;
+    }
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation((prev) => (prev && haversineKm(prev, next) < 0.02 ? prev : next));
       },
-      () => {},
+      (e) => {
+        if (e.code === e.PERMISSION_DENIED) setGeoDenied(true); // 明確拒絕 → 不必等逾時
+      },
       { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 }
     );
     return () => navigator.geolocation.clearWatch(id);
@@ -76,6 +83,7 @@ export default function App() {
           <MapPage
             stations={stations}
             userLocation={userLocation}
+            geoDenied={geoDenied}
             autoFitDone={autoFitDone}
             onAutoFitDone={onAutoFitDone}
             selected={tab === 'map' ? selected : null}

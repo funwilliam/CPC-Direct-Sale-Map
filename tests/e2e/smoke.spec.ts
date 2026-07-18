@@ -43,7 +43,8 @@ test('搜尋「文山」+ 98 油品篩選', async ({ page }) => {
 test('油價頁：牌價卡 / 走勢圖 / 調價表 / 新鮮度', async ({ page }) => {
   await page.goto('./');
   await page.click('.tab-bar button:has-text("油價")');
-  await expect(page.locator('.price-card')).toHaveCount(4);
+  // 首個斷言含「資料下載+lazy chunk」等待，放寬到 15s（與地圖測試同標準）
+  await expect(page.locator('.price-card')).toHaveCount(4, { timeout: 15_000 });
   await expect(page.locator('.chart-block svg path')).toHaveCount(4); // 四油品 step 線
   await expect(page.locator('.recent-table tbody tr')).toHaveCount(10);
   await expect(page.locator('.attribution')).toContainText('資料更新於');
