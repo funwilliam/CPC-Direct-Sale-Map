@@ -39,6 +39,8 @@ interface MapAdapter {
 - 常數：`MAX_RADIUS_KM = 15`（≈20 分鐘車程，均速 45km/h）、`FAR_FALLBACK_ZOOM = 14`、`ZOOM_CEIL = 16`。
 - 初次定位自動執行一次；**定位按鈕**（右下 FAB）可隨時重新執行同一規則。
 - 使用者藍點：`.user-dot`（18px 藍芯+白圈+呼吸光暈，樣式見 spec/design.md）。
+- 藍點**持續跟隨**定位（App 層 watchPosition，移動 ≥20m 才更新）；相機不跟隨——
+  相機移動僅發生在定位鈕與初次自動視野（不搶使用者視角）。
 
 ## 相機移動（v1.2，UX：方向感一致、手勢級流暢）
 

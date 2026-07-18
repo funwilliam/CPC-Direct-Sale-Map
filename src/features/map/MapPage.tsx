@@ -102,6 +102,12 @@ export default function MapPage({
     if (ready && stations.length > 0) adapterRef.current?.setStations(stations);
   }, [ready, stations]);
 
+  // 藍點即時跟隨定位（App 層 watchPosition）；只動藍點，相機不跟——
+  // 相機移動僅發生在定位鈕與初次自動視野（原生地圖慣例，不搶使用者視角）
+  useEffect(() => {
+    if (ready && userLocation) adapterRef.current?.setUserLocation(userLocation);
+  }, [ready, userLocation]);
+
   /** 定位並套用視野規劃（初次自動執行；定位鈕重複觸發，spec/map.md §定位） */
   const locate = useCallback(() => {
     const adapter = adapterRef.current;

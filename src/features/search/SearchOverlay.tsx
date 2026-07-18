@@ -4,6 +4,7 @@ import { defaultSort, filterByFuels, sortByDistance, type FuelKey } from '../../
 import { haversineKm, type LatLng } from '../../lib/geo.ts';
 import {
   getDriveMinutes,
+  locationCacheKey,
   DRIVE_PREFILTER_KM,
   DRIVE_QUERY_LIMIT,
 } from '../../lib/drivetime.ts';
@@ -28,22 +29,28 @@ export default function SearchOverlay({ stations, userLocation, onPick }: Props)
 
   const fuse = useMemo(() => buildSearch(stations), [stations]);
 
-  // 車程只在「打開搜尋」時查一次：10km 內最近 10 站（省 API；有 sessionStorage 快取）
+  // 車程只在「打開搜尋」時查：10km 內最近 10 站（省 API；有 sessionStorage 快取）。
+  // 定位持續更新（watchPosition）下，以 ~300m 格網為鍵——同格網內移動不重查也不取消進行中的查詢
+  const locRef = useRef(userLocation);
+  locRef.current = userLocation;
+  const gridKey = userLocation ? locationCacheKey(userLocation) : null;
   useEffect(() => {
-    if (!open || !userLocation || stations.length === 0) return;
-    let cancelled = false; // 卸載/條件變動後不再 setState
-    const nearby = sortByDistance(stations, userLocation, haversineKm)
-      .filter((s) => haversineKm(userLocation, s) <= DRIVE_PREFILTER_KM)
+    if (!open || !gridKey || stations.length === 0) return;
+    const user = locRef.current;
+    if (!user) return;
+    let cancelled = false; // 卸載/換格網後不再 setState
+    const nearby = sortByDistance(stations, user, haversineKm)
+      .filter((s) => haversineKm(user, s) <= DRIVE_PREFILTER_KM)
       .slice(0, DRIVE_QUERY_LIMIT);
     if (nearby.length > 0) {
-      void getDriveMinutes(userLocation, nearby).then((r) => {
+      void getDriveMinutes(user, nearby).then((r) => {
         if (!cancelled) setDriveMin(r);
       });
     }
     return () => {
       cancelled = true;
     };
-  }, [open, userLocation, stations]);
+  }, [open, gridKey, stations]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();

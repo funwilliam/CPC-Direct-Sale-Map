@@ -6,7 +6,7 @@ import { loadData } from './lib/dataStore.ts';
 // 非首屏分頁延遲載入（首屏＝地圖，油價/設定進分頁才拉 chunk）
 const PricePage = lazy(() => import('./features/price/PricePage.tsx'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage.tsx'));
-import type { LatLng } from './lib/geo.ts';
+import { haversineKm, type LatLng } from './lib/geo.ts';
 import type { CurrentPriceFile, PriceHistoryFile, Station, StationsFile } from './types/station.ts';
 
 type Tab = 'map' | 'price' | 'settings';
@@ -47,13 +47,19 @@ export default function App() {
       });
   }, []);
 
-  // 搜尋覆層的距離/車程共用一次定位（地圖頁的定位由 MapPage 自行處理）
+  // 使用者定位：watchPosition 持續追蹤（藍點即時跟隨；相機只在定位鈕/初次視野時移動）。
+  // 移動 <20m 不更新 state，避免 GPS 抖動造成無意義重繪
   useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation((prev) => (prev && haversineKm(prev, next) < 0.02 ? prev : next));
+      },
       () => {},
-      { timeout: 10_000 }
+      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 }
     );
+    return () => navigator.geolocation.clearWatch(id);
   }, []);
 
   const onAutoFitDone = useCallback(() => setAutoFitDone(true), []);
