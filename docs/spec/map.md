@@ -39,8 +39,9 @@ interface MapAdapter {
 - 常數：`MAX_RADIUS_KM = 15`（≈20 分鐘車程，均速 45km/h）、`FAR_FALLBACK_ZOOM = 14`、`ZOOM_CEIL = 16`。
 - 初次定位自動執行一次；**定位按鈕**（右下 FAB）可隨時重新執行同一規則。
 - 使用者藍點：`.user-dot`（18px 藍芯+白圈+呼吸光暈，樣式見 spec/design.md）。
-- 藍點**持續跟隨**定位（App 層 watchPosition，移動 ≥20m 才更新）；相機不跟隨——
-  相機移動僅發生在定位鈕與初次自動視野（不搶使用者視角）。
+- 藍點**持續跟隨**定位（App 層 watchPosition，≥5m 即更新；<5m 視為原地抖動）；
+  adapter 內以 ~0.9s rAF 補間滑行至新點（原生等級平滑；>500m 大跳直接就位）。
+  相機不跟隨——相機移動僅發生在定位鈕與初次自動視野（不搶使用者視角）。
 - watchPosition 是**全 app 唯一定位來源**：watch 活躍時再呼叫 getCurrentPosition
   會餓死逾時（Chromium 實測），locate 一律讀 watch 的最新位置。
 - 初次視野：等 watch 首個定位點，明確拒絕即刻 fallback、最多等 10s。

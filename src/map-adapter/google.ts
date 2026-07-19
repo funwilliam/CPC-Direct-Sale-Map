@@ -22,6 +22,8 @@ export class GoogleMapAdapter implements MapAdapter {
   private selectedId: string | null = null;
   private visibleFranchise = new Set<string>();
   private userMarker: google.maps.marker.AdvancedMarkerElement | null = null;
+  private userAnim = 0; // 藍點補間 rAF handle
+  private userShown: LatLng | null = null; // 藍點目前畫面位置（補間起點）
   private markerClickCb: ((id: string) => void) | null = null;
   private mapClickCb: (() => void) | null = null;
   private viewportCb: ((v: { zoom: number }) => void) | null = null;
@@ -258,7 +260,9 @@ export class GoogleMapAdapter implements MapAdapter {
     this.directPool.clear();
     this.visibleFranchise.clear();
     this.selectedId = null;
+    cancelAnimationFrame(this.userAnim);
     this.userMarker = null;
+    this.userShown = null;
     if (this.map) {
       // 清監聽避免洩漏；清容器 DOM 讓（開發模式 StrictMode 的）重掛載乾淨起步
       google.maps.event.clearInstanceListeners(this.map);
@@ -363,8 +367,10 @@ export class GoogleMapAdapter implements MapAdapter {
   setUserLocation(pos: LatLng | null): void {
     if (!this.map || !this.markerLib) return;
     if (!pos) {
+      cancelAnimationFrame(this.userAnim);
       if (this.userMarker) this.userMarker.map = null;
       this.userMarker = null;
+      this.userShown = null;
       return;
     }
     if (!this.userMarker) {
@@ -375,9 +381,34 @@ export class GoogleMapAdapter implements MapAdapter {
         content: dot,
         zIndex: 999,
       });
+      this.userMarker.position = pos;
+      this.userMarker.map = this.map;
+      this.userShown = pos;
+      return;
     }
-    this.userMarker.position = pos;
-    this.userMarker.map = this.map;
+    // 兩個定位點之間補間滑行（原生地圖等級的藍點移動；GPS 約 1s 一報，
+    // 補間時長對齊回報間隔即形成連續滑動）。大跳（>500m，如冷啟動重定位）直接就位。
+    const from = this.userShown ?? pos;
+    cancelAnimationFrame(this.userAnim);
+    const dLat = pos.lat - from.lat;
+    const dLng = pos.lng - from.lng;
+    const approxKm = Math.hypot(dLat, dLng * Math.cos((pos.lat * Math.PI) / 180)) * 111;
+    if (approxKm > 0.5) {
+      this.userMarker.position = pos;
+      this.userShown = pos;
+      return;
+    }
+    const DUR = 900;
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - t0) / DUR);
+      const e = 1 - (1 - t) * (1 - t); // ease-out：先快後慢，視覺上貼近即時位置
+      const cur = { lat: from.lat + dLat * e, lng: from.lng + dLng * e };
+      this.userShown = cur;
+      if (this.userMarker) this.userMarker.position = cur;
+      if (t < 1) this.userAnim = requestAnimationFrame(step);
+    };
+    this.userAnim = requestAnimationFrame(step);
   }
 
   panTo(pos: LatLng, zoom?: number): void {

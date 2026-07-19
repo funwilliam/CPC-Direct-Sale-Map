@@ -50,7 +50,8 @@ export default function App() {
 
   // 使用者定位：watchPosition 持續追蹤（藍點即時跟隨；相機只在定位鈕/初次視野時移動）。
   // 全 app 唯一的定位來源——watch 活躍時再呼叫 getCurrentPosition 會餓死逾時（Chromium 實測），
-  // 因此 MapPage 的 locate 直接吃這條資料流。移動 <20m 不更新 state，避免 GPS 抖動無意義重繪
+  // 因此 MapPage 的 locate 直接吃這條資料流。<5m 視為原地抖動不更新；
+  // ≥5m 逐點進 adapter 補間滑行（藍點平滑度靠補間，不靠加大門檻）
   useEffect(() => {
     if (!navigator.geolocation) {
       setGeoDenied(true);
@@ -59,7 +60,7 @@ export default function App() {
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLocation((prev) => (prev && haversineKm(prev, next) < 0.02 ? prev : next));
+        setUserLocation((prev) => (prev && haversineKm(prev, next) < 0.005 ? prev : next));
       },
       (e) => {
         if (e.code === e.PERMISSION_DENIED) setGeoDenied(true); // 明確拒絕 → 不必等逾時
